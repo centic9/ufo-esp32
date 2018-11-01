@@ -174,7 +174,8 @@ bool DynamicRequestHandler::HandleInfoRequest(std::list<TParam>& params, HttpRes
 	//sBody.printf("\"dtapitoken\":\"%s\",", mpUfo->GetConfig().msDTApiToken.c_str());
 	sBody.printf("\"dtinterval\":\"%u\",", mpUfo->GetConfig().miDTInterval);
 	sBody.printf("\"solarenabled\":\"%u\",", mpUfo->GetConfig().mbSolarEnabled);
-	sBody.printf("\"solarenvid\":\"%s\",", mpUfo->GetConfig().msSolarUrl.c_str());
+	sBody.printf("\"solarurl\":\"%s\",", mpUfo->GetConfig().msSolarUrl.c_str());
+	sBody.printf("\"solarmax\":\"%u\",", mpUfo->GetConfig().msSolarMax.c_str());
 	sBody.printf("\"solarinterval\":\"%u\",", mpUfo->GetConfig().miSolarInterval);
 	sBody.printf("\"dtmonitoring\":\"%u\"", mpUfo->GetConfig().mbDTMonitoring);
 	sBody += '}';
@@ -231,8 +232,9 @@ bool DynamicRequestHandler::HandleDynatraceIntegrationRequest(std::list<TParam>&
 bool DynamicRequestHandler::HandleFroniusSolarDataRequest(std::list<TParam>& params, HttpResponse& rResponse){
 
     DynatraceAction* dtHandleRequest = mpUfo->dt.enterAction("Handle Fronius Solar Data Request");
-	String sUrl;
 	bool bEnabled = false;
+	String sUrl;
+	int iMax = 0;
 	int iInterval = 0;
 
 	String sBody;
@@ -243,6 +245,8 @@ bool DynamicRequestHandler::HandleFroniusSolarDataRequest(std::list<TParam>& par
 			bEnabled = (*it).paramValue;
 		else if ((*it).paramName == "solarurl")
 			sUrl = (*it).paramValue;
+		else if ((*it).paramName == "solarmax")
+			iMax = (*it).paramValue.toInt();
 		else if ((*it).paramName == "solarinterval")
 			iInterval = (*it).paramValue.toInt();
 		it++;
@@ -250,12 +254,13 @@ bool DynamicRequestHandler::HandleFroniusSolarDataRequest(std::list<TParam>& par
 
 	mpUfo->GetConfig().mbSolarEnabled = bEnabled;
 	mpUfo->GetConfig().msSolarUrl = sUrl;
+	mpUfo->GetConfig().msSolarMax = iMax;
 	mpUfo->GetConfig().miSolarInterval = iInterval;
 
 	if (mpUfo->GetConfig().Write())
 		mpUfo->GetDtIntegration().ProcessConfigChange();
 
-	ESP_LOGI(tag, "Fronius Solar Data Saved");
+	ESP_LOGI(tag, "Fronius Solar Data Saved: %s", sUrl.c_str());
 
 	rResponse.AddHeader(HttpResponse::HeaderNoCache);
 	rResponse.AddHeader("Location: /#!pagefroniussolardata");

@@ -85,7 +85,7 @@
 					<a href="#!pagedynatracemonitoringsettings" class="padded-list">Dynatrace monitoring</a>
 				</li>
 				<li>
-					<a href="#!pagefroniussolardata" class="padded-list">Fronius Solar Data</a>
+					<a href="#!pagefroniussolardatasettings" class="padded-list">Fronius Solar Data</a>
 				</li>
 				<li>
 					<!--<a href="wifisettings.html" class="padded-list">Wifi settings</a>-->
@@ -95,10 +95,7 @@
 					<a href="#!pageserversettings" class="padded-list">Web Server Settings</a>
 				</li>
 			</ul>
-
-
 		</div>
-
 	</home>
 
 	<!-- for the second page, Phonon will load its content. -->
@@ -127,6 +124,17 @@
 				<li class="padded-list" id="lirssi">Signal strength: <span id="rssi">-</span></li>
 				<li class="padded-list" id="liapchannel">Channel: <span id="apchannel">-</span></li>
 				<li class="padded-list" id="liinfohostname">Hostname: <span id="infohostname">-</span></li>
+
+				<li class="padded-list" id="liinfodtenabled">Dynatrace Integration: <span id="infodtenabled">-</span></li>
+				<li class="padded-list" id="liinfodtenvid">Dynatrace environment ID or URL: <span id="infodtenvid">-</span></li>
+				<li class="padded-list" id="liinfodtinterval">Dynatrace environment ID or URL: <span id="infodtinterval">-</span></li>
+
+				<li class="padded-list" id="liinfosolarenabled">Fronius Solar Data: <span id="infosolarenabled">-</span></li>
+				<li class="padded-list" id="liinfosolarurl">Fronius Solar API URL: <span id="infosolarurl">-</span></li>
+				<li class="padded-list" id="liinfosolarmax">Fronius Solar Max power (Watt): <span id="infosolarmax">-</span></li>
+				<li class="padded-list" id="liinfosolarinterval">Fronius Solar Interval: <span id="infosolarinterval">-</span></li>
+
+				<li class="padded-list" id="liinfodtmonitoring">Dynatrace Self-Monitoring: <span id="infodtmonitoring">-</span></li>
 			</ul>
 		</div>
 	</pageinfo>
@@ -268,6 +276,7 @@
 			</div>
 		</div>
 	</pagewifisettings>
+
 	<pageserversettings data-page="true">
 		<header class="header-bar">
 			<button class="btn icon icon-arrow-back pull-left" data-navigation="$previous-page"></button>
@@ -380,11 +389,11 @@
 		</div>
 	</pagedynatraceintegrationsettings>
 
-	<pagefroniussolardata data-page="true">
+	<pagefroniussolardatasettings data-page="true">
 		<header class="header-bar">
 			<button class="btn icon icon-arrow-back pull-left" data-navigation="$previous-page"></button>
 			<div class="center">
-				<h1 class="title">Fronius Solar Data</h1>
+				<h1 class="title">Fronius Solar API Integration</h1>
 			</div>
 		</header>
 		<div class="content">
@@ -392,37 +401,30 @@
 				<form method='GET' action='/pagefroniussolardata'>
 					<div class="padded-full">
 						<p>
-							Connect your UFO to a Dynatrace Server to query the problem API.<br />
+							Connect your UFO to a Fronius Solar Energy product via the Fronius Solar API.<br />
+							This allows to visualize the current power produced by a Photovoltaic array and the
+							percentage of power in an accompaning storage system.<br />
 							Following metrics will then be visualized by the UFO:
 						<ul>
-							Open application problems (red)<br>
-							Open service problems (purple)<br>
-							Open infrastructure problems (yellow)
+							Current power input (blue)<br />
+							Current storage percentage (green)
 						</ul>
-						Only the three most severe problems will be shows.
+						Where the full circle means maximum power generation or fully charged storage<br />
+						Usually a URL for a local environment is necessary as no authentication is supported currently<br />
 						</p>
 						<ul class="list">
 							<li class="">
 								<label class="checkbox">
-									<input type="checkbox" class="" name="dtenabled" id="dtenabled">
+									<input type="checkbox" class="" name="solarenabled" id="solarenabled">
 									Enabled
 									<span></span>
 								</label>
 							</li>
 						</ul>
 
-						<input type="text" name="dtenvid" placeholder="Environment ID (tenant) or complete URL (like 'https://mine.dynatrace.com/e/<environment id>')" id="dtenvid" />
-						<input type="text" name="dtapitoken" placeholder="API Token" id="dtapitoken" />
-						<input type="number" min="10" max="300" placeholder="polling interval in sec" name="dtinterval" id="dtinterval" />
-						<!--<ul class="list">
-                        <li class="padded-for-list">
-                            <label class="radio">
-                                <input type="radio" name="test">
-                                Radio1
-                                <span></span>
-                            </label>
-                        </li>
-					 </ul>-->
+						<input type="text" name="solarurl" placeholder="URL (like http://192.168.1.100/, usually from the local network)" id="solarurl" />
+						<input type="number" min="10" max="999999" placeholder="max produced power in Watt" name="solarmax" id="solarmax" />
+						<input type="number" min="10" max="300" placeholder="polling interval in sec" name="solarinterval" id="solarinterval" />
 					</div>
 					<div class="padded-full">
 						<button class="btn btn-submit fit-parent primary" type="submit">Apply settings.</button>
@@ -430,7 +432,7 @@
 				</form>
 			</div>
 		</div>
-	</pagefroniussolardata>
+	</pagefroniussolardatasettings>
 
 	<pagedynatracemonitoringsettings data-page="true">
 		<header class="header-bar">
@@ -814,6 +816,55 @@
 						else
 							document.getElementById('liapchannel').style = 'Display:None';
 
+						if (result.dtenabled == '1')
+							document.getElementById('infodtenabled').innerHTML = 'enabled';
+						else
+							document.getElementById('infodtenabled').innerHTML = 'disabled';
+
+						if (result.dtenvid) {
+							document.getElementById('infodtenvid').innerHTML = result.dtenvid;
+							delete document.getElementById('liinfodtenvid').style;
+						}
+						else
+							document.getElementById('liinfodtenvid').style = 'Display:None';
+
+						if (result.dtinterval) {
+							document.getElementById('infodtinterval').innerHTML = result.dtinterval;
+							delete document.getElementById('liinfodtinterval').style;
+						}
+						else
+							document.getElementById('liinfodtinterval').style = 'Display:None';
+
+						if (result.solarenabled == '1')
+							document.getElementById('infosolarenabled').innerHTML = 'enabled';
+						else
+							document.getElementById('infosolarenabled').innerHTML = 'disabled';
+
+						if (result.solarurl) {
+							document.getElementById('infosolarurl').innerHTML = result.solarurl;
+							delete document.getElementById('liinfosolarurl').style;
+						}
+						else
+							document.getElementById('liinfosolarurl').style = 'Display:None';
+
+						if (result.solarmax) {
+							document.getElementById('infosolarmax').innerHTML = result.solarmax;
+							delete document.getElementById('liinfosolarmax').style;
+						}
+						else
+							document.getElementById('liinfosolarmax').style = 'Display:None';
+
+						if (result.solarinterval) {
+							document.getElementById('infosolarinterval').innerHTML = result.solarinterval;
+							delete document.getElementById('liinfosolarinterval').style;
+						}
+						else
+							document.getElementById('liinfosolarinterval').style = 'Display:None';
+
+						if (result.dtmonitoring == '1')
+							document.getElementById('infodtmonitoring').innerHTML = 'enabled';
+						else
+							document.getElementById('infodtmonitoring').innerHTML = 'disabled';
 					},
 					error: function (res, flagError, xhr) {
 						console.error(flagError);
@@ -928,7 +979,7 @@
 					}
 				});
 			}
-			if (evt.detail.page == "pagefroniussolardata") {
+			if (evt.detail.page == "pagefroniussolardatasettings") {
 				var req = phonon.ajax({
 					method: 'GET',
 					url: 'info',
@@ -937,9 +988,10 @@
 					success: function (res, xhr) {
 						//console.log(xhr.response);
 						var result = JSON.parse(xhr.response);
-						document.getElementById('dtenabled').checked = (result.dtenabled == '1');
-						document.getElementById('dtenvid').value = result.dtenvid;
-						document.getElementById('dtinterval').value = result.dtinterval;
+						document.getElementById('solarenabled').checked = (result.solarenabled == '1');
+						document.getElementById('solarurl').value = result.solarurl;
+						document.getElementById('solarmax').value = result.solarmax;
+						document.getElementById('solarinterval').value = result.solarinterval;
 					},
 					error: function (res, flagError, xhr) {
 						console.error(flagError);

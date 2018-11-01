@@ -51,6 +51,7 @@ bool Config::Read(){
 	ReadInt(h, "DTInterval", miDTInterval);
 	ReadBool(h, "SolarEnabled", mbSolarEnabled);
 	ReadString(h, "SolarUrl", msSolarUrl);
+	ReadInt(h, "SolarMax", msSolarMax);
 	ReadInt(h, "SolarInterval", miSolarInterval);
 	ReadBool(h, "DTMonitoring", mbDTMonitoring);
 	ReadBool(h, "SrvSSLEnabled", mbWebServerUseSsl);
@@ -108,6 +109,8 @@ bool Config::Write()
 	if (!WriteBool(h, "SolarEnabled", mbSolarEnabled))
 		return nvs_close(h), false;
 	if (!WriteString(h, "SolarUrl", msSolarUrl))
+		return nvs_close(h), false;
+	if (!WriteInt(h, "SolarMax", msSolarMax))
 		return nvs_close(h), false;
 	if (!WriteInt(h, "SolarInterval", miSolarInterval))
 		return nvs_close(h), false;
