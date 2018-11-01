@@ -422,7 +422,7 @@
 							</li>
 						</ul>
 
-						<input type="text" name="solarurl" placeholder="URL (like http://192.168.1.100/, usually from the local network)" id="solarurl" />
+						<input type="text" name="solarurl" placeholder="URL (like http://192.168.1.10/, usually from the local network)" id="solarurl" />
 						<input type="number" min="10" max="999999" placeholder="max produced power in Watt" name="solarmax" id="solarmax" />
 						<input type="number" min="10" max="300" placeholder="polling interval in sec" name="solarinterval" id="solarinterval" />
 					</div>
@@ -816,50 +816,56 @@
 						else
 							document.getElementById('liapchannel').style = 'Display:None';
 
-						if (result.dtenabled == '1')
+						if (result.dtenabled == '1') {
 							document.getElementById('infodtenabled').innerHTML = 'enabled';
-						else
+							if (result.dtenvid) {
+								document.getElementById('infodtenvid').innerHTML = result.dtenvid;
+								delete document.getElementById('liinfodtenvid').style;
+							}
+							else
+								document.getElementById('liinfodtenvid').style = 'Display:None';
+
+							if (result.dtinterval) {
+								document.getElementById('infodtinterval').innerHTML = result.dtinterval;
+								delete document.getElementById('liinfodtinterval').style;
+							}
+							else
+								document.getElementById('liinfodtinterval').style = 'Display:None';
+						} else {
 							document.getElementById('infodtenabled').innerHTML = 'disabled';
-
-						if (result.dtenvid) {
-							document.getElementById('infodtenvid').innerHTML = result.dtenvid;
-							delete document.getElementById('liinfodtenvid').style;
-						}
-						else
 							document.getElementById('liinfodtenvid').style = 'Display:None';
-
-						if (result.dtinterval) {
-							document.getElementById('infodtinterval').innerHTML = result.dtinterval;
-							delete document.getElementById('liinfodtinterval').style;
-						}
-						else
 							document.getElementById('liinfodtinterval').style = 'Display:None';
+						}
 
-						if (result.solarenabled == '1')
+						if (result.solarenabled == '1') {
 							document.getElementById('infosolarenabled').innerHTML = 'enabled';
-						else
+
+							if (result.solarurl) {
+								document.getElementById('infosolarurl').innerHTML = result.solarurl;
+								delete document.getElementById('liinfosolarurl').style;
+							}
+							else
+								document.getElementById('liinfosolarurl').style = 'Display:None';
+
+							if (result.solarmax) {
+								document.getElementById('infosolarmax').innerHTML = result.solarmax;
+								delete document.getElementById('liinfosolarmax').style;
+							}
+							else
+								document.getElementById('liinfosolarmax').style = 'Display:None';
+
+							if (result.solarinterval) {
+								document.getElementById('infosolarinterval').innerHTML = result.solarinterval;
+								delete document.getElementById('liinfosolarinterval').style;
+							}
+							else
+								document.getElementById('liinfosolarinterval').style = 'Display:None';
+						} else {
 							document.getElementById('infosolarenabled').innerHTML = 'disabled';
-
-						if (result.solarurl) {
-							document.getElementById('infosolarurl').innerHTML = result.solarurl;
-							delete document.getElementById('liinfosolarurl').style;
-						}
-						else
 							document.getElementById('liinfosolarurl').style = 'Display:None';
-
-						if (result.solarmax) {
-							document.getElementById('infosolarmax').innerHTML = result.solarmax;
-							delete document.getElementById('liinfosolarmax').style;
-						}
-						else
 							document.getElementById('liinfosolarmax').style = 'Display:None';
-
-						if (result.solarinterval) {
-							document.getElementById('infosolarinterval').innerHTML = result.solarinterval;
-							delete document.getElementById('liinfosolarinterval').style;
-						}
-						else
 							document.getElementById('liinfosolarinterval').style = 'Display:None';
+						}
 
 						if (result.dtmonitoring == '1')
 							document.getElementById('infodtmonitoring').innerHTML = 'enabled';

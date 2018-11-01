@@ -172,11 +172,14 @@ bool DynamicRequestHandler::HandleInfoRequest(std::list<TParam>& params, HttpRes
 	sBody.printf("\"dtenabled\":\"%u\",", mpUfo->GetConfig().mbDTEnabled);
 	sBody.printf("\"dtenvid\":\"%s\",", mpUfo->GetConfig().msDTEnvIdOrUrl.c_str());
 	//sBody.printf("\"dtapitoken\":\"%s\",", mpUfo->GetConfig().msDTApiToken.c_str());
-	sBody.printf("\"dtinterval\":\"%u\",", mpUfo->GetConfig().miDTInterval);
+	if(mpUfo->GetConfig().miDTInterval > 0)
+	    sBody.printf("\"dtinterval\":\"%u\",", mpUfo->GetConfig().miDTInterval);
 	sBody.printf("\"solarenabled\":\"%u\",", mpUfo->GetConfig().mbSolarEnabled);
 	sBody.printf("\"solarurl\":\"%s\",", mpUfo->GetConfig().msSolarUrl.c_str());
-	sBody.printf("\"solarmax\":\"%u\",", mpUfo->GetConfig().msSolarMax.c_str());
-	sBody.printf("\"solarinterval\":\"%u\",", mpUfo->GetConfig().miSolarInterval);
+	if(mpUfo->GetConfig().msSolarMax > 0)
+	    sBody.printf("\"solarmax\":\"%u\",", mpUfo->GetConfig().msSolarMax);
+	if(mpUfo->GetConfig().miSolarInterval > 0)
+	    sBody.printf("\"solarinterval\":\"%u\",", mpUfo->GetConfig().miSolarInterval);
 	sBody.printf("\"dtmonitoring\":\"%u\"", mpUfo->GetConfig().mbDTMonitoring);
 	sBody += '}';
 

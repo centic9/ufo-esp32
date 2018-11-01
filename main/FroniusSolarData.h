@@ -31,7 +31,7 @@ private:
     void DisplayDefault();
     void HandleFailure();
 
-    WebClient  dtClient;
+    WebClient  solarClient;
 
     Ufo* mpUfo;  
     DisplayCharter* mpDisplayLowerRing;
@@ -39,18 +39,16 @@ private:
     Config* mpConfig;
 //	Wifi* mpWifi;
     
-    Url mDtUrl;
-    String mDtUrlString;
+    Url mSolarUrl;
+    String mSolarUrlString;
     
     bool mInitialized = false;
     bool mEnabled;
     __uint8_t mActTaskId; 
     __uint8_t mActConfigRevision;
 
-    int miTotalProblems;
-    int miApplicationProblems;
-    int miServiceProblems;
-    int miInfrastructureProblems;
+    int miSOC;
+    double mdPV;
 };
 
 #endif

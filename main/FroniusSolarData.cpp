@@ -32,10 +32,8 @@ void task_function_fronius_solar_data(void *pvParameter)
 
 
 FroniusSolarData::FroniusSolarData() {
-    miTotalProblems = -1;
-    miApplicationProblems = -1;
-    miServiceProblems = -1;
-    miInfrastructureProblems = -1;
+    miSOC = -1;
+    mdPV = -1;
 
 	ESP_LOGI(LOGTAG, "Start");
 }
@@ -65,12 +63,14 @@ void FroniusSolarData::Init(Ufo* pUfo, DisplayCharter* pDisplayLowerRing, Displa
 
 // care about starting or ending the task
 void FroniusSolarData::ProcessConfigChange(){
+    ESP_LOGI(LOGTAG, "Config change, %d", mInitialized);
+
     if (!mInitialized)
         return; 
 
     //its a little tricky to handle an enable/disable race condition without ending up with 0 or 2 tasks running
     //so whenever there is a (short) disabled situation detected we let the old task go and do not need to wait on its termination
-    if (mpConfig->mbDTEnabled){
+    if (mpConfig->mbSolarEnabled){
         if (!mEnabled){
             TSolarTaskParam* pParam = new TSolarTaskParam;
             pParam->pIntegration = this;
@@ -84,7 +84,7 @@ void FroniusSolarData::ProcessConfigChange(){
         if (mEnabled)
             mActTaskId++;
     }
-    mEnabled = mpConfig->mbDTEnabled;
+    mEnabled = mpConfig->mbSolarEnabled;
     mActConfigRevision++;
 }
 
@@ -94,18 +94,10 @@ void FroniusParseIntegrationUrl(Url& rUrl, String& sSolarUrl){
     ESP_LOGI(LOGTAG, "%s", sSolarUrl.c_str());
 
     if (sSolarUrl.length()){
-        if (sSolarUrl.startsWith("http")){
-            if (sSolarUrl.charAt(sSolarUrl.length()-1) == '/')
-                sHelp.printf("%ssolar_api/v1/GetPowerFlowRealtimeData.fcgi", sSolarUrl.c_str());
-            else
-                sHelp.printf("%s/solar_api/v1/GetPowerFlowRealtimeData.fcgi", sSolarUrl.c_str());
-        }
-        else{
-            if (sSolarUrl.charAt(sSolarUrl.length()-1) == '/')
-                sHelp.printf("https://%ssolar_api/v1/GetPowerFlowRealtimeData.fcgi", sSolarUrl.c_str());
-            else
-                sHelp.printf("https://%s/solar_api/v1/GetPowerFlowRealtimeData.fcgi", sSolarUrl.c_str());
-        }
+        if (sSolarUrl.charAt(sSolarUrl.length()-1) == '/')
+            sHelp.printf("%ssolar_api/v1/GetPowerFlowRealtimeData.fcgi", sSolarUrl.c_str());
+        else
+            sHelp.printf("%s/solar_api/v1/GetPowerFlowRealtimeData.fcgi", sSolarUrl.c_str());
     }
     
     ESP_LOGD(LOGTAG, "URL: %s", sHelp.c_str());
@@ -122,12 +114,12 @@ void FroniusSolarData::Run(__uint8_t uTaskId) {
             //Configuration is not atomic - so in case of a change there is the possibility that we use inconsistent credentials - but who cares (the next time it would be fine again)
             if (uConfigRevision != mActConfigRevision){
                 uConfigRevision = mActConfigRevision; //memory barrier would be needed here
-                FroniusParseIntegrationUrl(mDtUrl, mpConfig->msSolarUrl);
+                FroniusParseIntegrationUrl(mSolarUrl, mpConfig->msSolarUrl);
             }
             GetData();
-            ESP_LOGD(LOGTAG, "free heap after processing DT: %i", esp_get_free_heap_size());            
+            ESP_LOGD(LOGTAG, "free heap after processing Fronius: %i", esp_get_free_heap_size());
 
-            for (int i=0 ; i < mpConfig->miDTInterval ; i++){
+            for (int i=0 ; i < mpConfig->miSolarInterval ; i++){
                 vTaskDelay(1000 / portTICK_PERIOD_MS);
 
                 if (uTaskId != mActTaskId)
@@ -144,25 +136,24 @@ void FroniusSolarData::Run(__uint8_t uTaskId) {
 
 void FroniusSolarData::GetData() {
 	ESP_LOGD(LOGTAG, "polling");
-    DynatraceAction* dtPollApi = mpUfo->dt.enterAction("Poll Dynatrace API");	
-    if (dtClient.Prepare(&mDtUrl)) {
-
-        DynatraceAction* dtHttpGet = mpUfo->dt.enterAction("HTTP Get Request", WEBREQUEST, dtPollApi);	
-        unsigned short responseCode = dtClient.HttpGet();
-        String response = dtClient.GetResponseData();
-        mpUfo->dt.leaveAction(dtHttpGet, &mDtUrlString, responseCode, response.length());
+    DynatraceAction* dtPollApi = mpUfo->dt.enterAction("Poll Fronius Solar API");
+    if (solarClient.Prepare(&mSolarUrl)) {
+        DynatraceAction* solarHttpGet = mpUfo->dt.enterAction("HTTP Get Request", WEBREQUEST, dtPollApi);
+        unsigned short responseCode = solarClient.HttpGet();
+        String response = solarClient.GetResponseData();
+        mpUfo->dt.leaveAction(solarHttpGet, &mSolarUrlString, responseCode, response.length());
         if (responseCode == 200) {
-            DynatraceAction* dtProcess = mpUfo->dt.enterAction("Process Dynatrace Metrics", dtPollApi);	
+            DynatraceAction* solarProcess = mpUfo->dt.enterAction("Process Fronius Solar Metrics", dtPollApi);
             Process(response);
-            mpUfo->dt.leaveAction(dtProcess);
+            mpUfo->dt.leaveAction(solarProcess);
         } else {
             ESP_LOGE(LOGTAG, "Communication with Dynatrace failed - error %u", responseCode);
-            DynatraceAction* dtFailure = mpUfo->dt.enterAction("Handle Dynatrace API failure", dtPollApi);	
+            DynatraceAction* solarFailure = mpUfo->dt.enterAction("Handle Fronius Solar API failure", dtPollApi);
             HandleFailure();
-            mpUfo->dt.leaveAction(dtFailure);
+            mpUfo->dt.leaveAction(solarFailure);
         }        
     }
-    dtClient.Clear();
+    solarClient.Clear();
     mpUfo->dt.leaveAction(dtPollApi);
 }
 
@@ -173,19 +164,19 @@ void FroniusSolarData::HandleFailure() {
     mpDisplayLowerRing->SetLeds(0, 3, 0x0000ff);
     mpDisplayUpperRing->SetWhirl(220, true);
     mpDisplayLowerRing->SetWhirl(220, false);
-    miTotalProblems = -1;
-    miApplicationProblems = -1;
-    miServiceProblems = -1;
-    miInfrastructureProblems = -1;
+    miSOC = -1;
+    mdPV = -1;
 }
 
 
 void FroniusSolarData::DisplayDefault() {
-	ESP_LOGD(LOGTAG, "DisplayDefault: %i", miTotalProblems);
+	ESP_LOGW(LOGTAG, "Unimplemented: DisplayDefault: %d/%f", miSOC, mdPV);
+// TODO
+	ESP_LOGD(LOGTAG, "DisplayDefault: %i", -1);
     mpDisplayLowerRing->Init();
     mpDisplayUpperRing->Init();
 
-    switch (miTotalProblems){
+    /*switch (miTotalProblems){
         case 0:
           mpDisplayUpperRing->SetLeds(0, 15, 0x00ff00);
           mpDisplayLowerRing->SetLeds(0, 15, 0x00ff00);
@@ -217,12 +208,13 @@ void FroniusSolarData::DisplayDefault() {
           mpDisplayLowerRing->SetWhirl(180, true);
           break;
       }
-
+*/
 }
 
 
 void FroniusSolarData::Process(String& jsonString) {
-    
+	ESP_LOGW(LOGTAG, "Unimplemented: Hand JSON: %s", jsonString.c_str());
+    /* TODO
     cJSON* parentJson = cJSON_Parse(jsonString.c_str());
     if (!parentJson)
         return;
@@ -266,5 +258,5 @@ void FroniusSolarData::Process(String& jsonString) {
 //    if (changed) {
         DisplayDefault();
 //    }
-
+*/
 }

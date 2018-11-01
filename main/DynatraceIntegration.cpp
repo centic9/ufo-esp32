@@ -1,6 +1,5 @@
 #include "DynatraceIntegration.h"
 #include "DynatraceAction.h"
-#include "FroniusSolarData.h"
 #include "WebClient.h"
 #include "Url.h"
 #include "Ufo.h"
