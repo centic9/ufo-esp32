@@ -173,6 +173,9 @@ bool DynamicRequestHandler::HandleInfoRequest(std::list<TParam>& params, HttpRes
 	sBody.printf("\"dtenvid\":\"%s\",", mpUfo->GetConfig().msDTEnvIdOrUrl.c_str());
 	//sBody.printf("\"dtapitoken\":\"%s\",", mpUfo->GetConfig().msDTApiToken.c_str());
 	sBody.printf("\"dtinterval\":\"%u\",", mpUfo->GetConfig().miDTInterval);
+	sBody.printf("\"solarenabled\":\"%u\",", mpUfo->GetConfig().mbSolarEnabled);
+	sBody.printf("\"solarenvid\":\"%s\",", mpUfo->GetConfig().msSolarUrl.c_str());
+	sBody.printf("\"solarinterval\":\"%u\",", mpUfo->GetConfig().miSolarInterval);
 	sBody.printf("\"dtmonitoring\":\"%u\"", mpUfo->GetConfig().mbDTMonitoring);
 	sBody += '}';
 
@@ -228,8 +231,7 @@ bool DynamicRequestHandler::HandleDynatraceIntegrationRequest(std::list<TParam>&
 bool DynamicRequestHandler::HandleFroniusSolarDataRequest(std::list<TParam>& params, HttpResponse& rResponse){
 
     DynatraceAction* dtHandleRequest = mpUfo->dt.enterAction("Handle Fronius Solar Data Request");
-	String sEnvId;
-	String sApiToken;
+	String sUrl;
 	bool bEnabled = false;
 	int iInterval = 0;
 
@@ -237,22 +239,18 @@ bool DynamicRequestHandler::HandleFroniusSolarDataRequest(std::list<TParam>& par
 
 	std::list<TParam>::iterator it = params.begin();
 	while (it != params.end()){
-		if ((*it).paramName == "dtenabled")
+		if ((*it).paramName == "solarenabled")
 			bEnabled = (*it).paramValue;
-		else if ((*it).paramName == "dtenvid")
-			sEnvId = (*it).paramValue;
-		else if ((*it).paramName == "dtapitoken")
-			sApiToken = (*it).paramValue;
-		else if ((*it).paramName == "dtinterval")
+		else if ((*it).paramName == "solarurl")
+			sUrl = (*it).paramValue;
+		else if ((*it).paramName == "solarinterval")
 			iInterval = (*it).paramValue.toInt();
 		it++;
 	}
 
-	mpUfo->GetConfig().mbDTEnabled = bEnabled;
-	mpUfo->GetConfig().msDTEnvIdOrUrl = sEnvId;
-	if (sApiToken.length())
-		mpUfo->GetConfig().msDTApiToken = sApiToken;
-	mpUfo->GetConfig().miDTInterval = iInterval;
+	mpUfo->GetConfig().mbSolarEnabled = bEnabled;
+	mpUfo->GetConfig().msSolarUrl = sUrl;
+	mpUfo->GetConfig().miSolarInterval = iInterval;
 
 	if (mpUfo->GetConfig().Write())
 		mpUfo->GetDtIntegration().ProcessConfigChange();

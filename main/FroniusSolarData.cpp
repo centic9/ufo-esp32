@@ -10,18 +10,18 @@
 #include <esp_log.h>
 #include <cJSON.h>
 
-static const char* LOGTAG = "Dynatrace";
+static const char* LOGTAG = "FroniusSolar";
 
 
 typedef struct{
     FroniusSolarData* pIntegration;
     __uint8_t uTaskId;
-} TDtTaskParam;
+} TSolarTaskParam;
 
 void task_function_fronius_solar_data(void *pvParameter)
 {
     ESP_LOGI(LOGTAG, "task_function_fronius_solar_data");
-    TDtTaskParam* p = (TDtTaskParam*)pvParameter;
+    TSolarTaskParam* p = (TSolarTaskParam*)pvParameter;
     ESP_LOGI(LOGTAG, "run pIntegration");
 	p->pIntegration->Run(p->uTaskId);
     ESP_LOGI(LOGTAG, "Ending Task %d", p->uTaskId);
@@ -72,7 +72,7 @@ void FroniusSolarData::ProcessConfigChange(){
     //so whenever there is a (short) disabled situation detected we let the old task go and do not need to wait on its termination
     if (mpConfig->mbDTEnabled){
         if (!mEnabled){
-            TDtTaskParam* pParam = new TDtTaskParam;
+            TSolarTaskParam* pParam = new TSolarTaskParam;
             pParam->pIntegration = this;
             pParam->uTaskId = mActTaskId;
             ESP_LOGI(LOGTAG, "Create Task %d", mActTaskId);
@@ -88,31 +88,24 @@ void FroniusSolarData::ProcessConfigChange(){
     mActConfigRevision++;
 }
 
-void FroniusParseIntegrationUrl(Url& rUrl, String& sEnvIdOrUrl, String& sApiToken){
+void FroniusParseIntegrationUrl(Url& rUrl, String& sSolarUrl){
     String sHelp;
  
-    ESP_LOGI(LOGTAG, "%s", sEnvIdOrUrl.c_str());
-    ESP_LOGD(LOGTAG, "%s", sApiToken.c_str());
+    ESP_LOGI(LOGTAG, "%s", sSolarUrl.c_str());
 
-    if (sEnvIdOrUrl.length()){
-        if (sEnvIdOrUrl.indexOf(".") < 0){ //an environment id
-            sHelp.printf("https://%s.live.dynatrace.com/api/v1/problem/status?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
+    if (sSolarUrl.length()){
+        if (sSolarUrl.startsWith("http")){
+            if (sSolarUrl.charAt(sSolarUrl.length()-1) == '/')
+                sHelp.printf("%ssolar_api/v1/GetPowerFlowRealtimeData.fcgi", sSolarUrl.c_str());
+            else
+                sHelp.printf("%s/solar_api/v1/GetPowerFlowRealtimeData.fcgi", sSolarUrl.c_str());
         }
         else{
-            if (sEnvIdOrUrl.startsWith("http")){
-                if (sEnvIdOrUrl.charAt(sEnvIdOrUrl.length()-1) == '/')
-                    sHelp.printf("%sapi/v1/problem/status?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
-                else
-                    sHelp.printf("%s/api/v1/problem/status?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
-            }
-            else{
-                if (sEnvIdOrUrl.charAt(sEnvIdOrUrl.length()-1) == '/')
-                    sHelp.printf("https://%sapi/v1/problem/status?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
-                else
-                    sHelp.printf("https://%s/api/v1/problem/status?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
-            }
-                
-        }   
+            if (sSolarUrl.charAt(sSolarUrl.length()-1) == '/')
+                sHelp.printf("https://%ssolar_api/v1/GetPowerFlowRealtimeData.fcgi", sSolarUrl.c_str());
+            else
+                sHelp.printf("https://%s/solar_api/v1/GetPowerFlowRealtimeData.fcgi", sSolarUrl.c_str());
+        }
     }
     
     ESP_LOGD(LOGTAG, "URL: %s", sHelp.c_str());
@@ -129,7 +122,7 @@ void FroniusSolarData::Run(__uint8_t uTaskId) {
             //Configuration is not atomic - so in case of a change there is the possibility that we use inconsistent credentials - but who cares (the next time it would be fine again)
             if (uConfigRevision != mActConfigRevision){
                 uConfigRevision = mActConfigRevision; //memory barrier would be needed here
-                FroniusParseIntegrationUrl(mDtUrl, mpConfig->msDTEnvIdOrUrl, mpConfig->msDTApiToken);
+                FroniusParseIntegrationUrl(mDtUrl, mpConfig->msSolarUrl);
             }
             GetData();
             ESP_LOGD(LOGTAG, "free heap after processing DT: %i", esp_get_free_heap_size());            

@@ -20,6 +20,7 @@ Config::Config() {
 	muWebServerPort = 0;
 
 	mbDTEnabled = false;
+	mbSolarEnabled = false;
 	mbDTMonitoring = false;
 
 	muLastSTAIpAddress = 0;
@@ -48,6 +49,9 @@ bool Config::Read(){
 	ReadString(h, "DTEnvId", msDTEnvIdOrUrl);
 	ReadString(h, "DTApiToken", msDTApiToken);
 	ReadInt(h, "DTInterval", miDTInterval);
+	ReadBool(h, "SolarEnabled", mbSolarEnabled);
+	ReadString(h, "SolarUrl", msSolarUrl);
+	ReadInt(h, "SolarInterval", miSolarInterval);
 	ReadBool(h, "DTMonitoring", mbDTMonitoring);
 	ReadBool(h, "SrvSSLEnabled", mbWebServerUseSsl);
 	nvs_get_u16(h, "SrvListenPort", &muWebServerPort);
@@ -99,6 +103,13 @@ bool Config::Write()
 	if (!WriteString(h, "DTApiToken", msDTApiToken))
 		return nvs_close(h), false;
 	if (!WriteInt(h, "DTInterval", miDTInterval))
+		return nvs_close(h), false;
+
+	if (!WriteBool(h, "SolarEnabled", mbSolarEnabled))
+		return nvs_close(h), false;
+	if (!WriteString(h, "SolarUrl", msSolarUrl))
+		return nvs_close(h), false;
+	if (!WriteInt(h, "SolarInterval", miSolarInterval))
 		return nvs_close(h), false;
 
 	if (!WriteBool(h, "DTMonitoring", mbDTMonitoring))

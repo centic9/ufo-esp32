@@ -45,6 +45,10 @@ public:
 	bool mbDTEnabled;
     int miDTInterval;
 
+    String msSolarUrl;
+	bool mbSolarEnabled;
+    int miSolarInterval;
+
 	bool mbDTMonitoring;
 
 	bool mbWebServerUseSsl;
