@@ -85,6 +85,9 @@
 					<a href="#!pagedynatracemonitoringsettings" class="padded-list">Dynatrace monitoring</a>
 				</li>
 				<li>
+					<a href="#!pagefroniussolardata" class="padded-list">Fronius Solar Data</a>
+				</li>
+				<li>
 					<!--<a href="wifisettings.html" class="padded-list">Wifi settings</a>-->
 					<a href="#!pagewifisettings" class="padded-list">WiFi Settings</a>
 				</li>
@@ -376,6 +379,58 @@
 			</div>
 		</div>
 	</pagedynatraceintegrationsettings>
+
+	<pagefroniussolardata data-page="true">
+		<header class="header-bar">
+			<button class="btn icon icon-arrow-back pull-left" data-navigation="$previous-page"></button>
+			<div class="center">
+				<h1 class="title">Fronius Solar Data</h1>
+			</div>
+		</header>
+		<div class="content">
+			<div class="input-wrapper list">
+				<form method='GET' action='/pagefroniussolardata'>
+					<div class="padded-full">
+						<p>
+							Connect your UFO to a Dynatrace Server to query the problem API.<br />
+							Following metrics will then be visualized by the UFO:
+						<ul>
+							Open application problems (red)<br>
+							Open service problems (purple)<br>
+							Open infrastructure problems (yellow)
+						</ul>
+						Only the three most severe problems will be shows.
+						</p>
+						<ul class="list">
+							<li class="">
+								<label class="checkbox">
+									<input type="checkbox" class="" name="dtenabled" id="dtenabled">
+									Enabled
+									<span></span>
+								</label>
+							</li>
+						</ul>
+
+						<input type="text" name="dtenvid" placeholder="Environment ID (tenant) or complete URL (like 'https://mine.dynatrace.com/e/<environment id>')" id="dtenvid" />
+						<input type="text" name="dtapitoken" placeholder="API Token" id="dtapitoken" />
+						<input type="number" min="10" max="300" placeholder="polling interval in sec" name="dtinterval" id="dtinterval" />
+						<!--<ul class="list">
+                        <li class="padded-for-list">
+                            <label class="radio">
+                                <input type="radio" name="test">
+                                Radio1
+                                <span></span>
+                            </label>
+                        </li>
+					 </ul>-->
+					</div>
+					<div class="padded-full">
+						<button class="btn btn-submit fit-parent primary" type="submit">Apply settings.</button>
+					</div>
+				</form>
+			</div>
+		</div>
+	</pagefroniussolardata>
 
 	<pagedynatracemonitoringsettings data-page="true">
 		<header class="header-bar">
@@ -855,6 +910,25 @@
 				});
 			}
 			if (evt.detail.page == "pagedynatraceintegrationsettings") {
+				var req = phonon.ajax({
+					method: 'GET',
+					url: 'info',
+					//crossDomain: false,
+					dataType: 'text/json',
+					success: function (res, xhr) {
+						//console.log(xhr.response);
+						var result = JSON.parse(xhr.response);
+						document.getElementById('dtenabled').checked = (result.dtenabled == '1');
+						document.getElementById('dtenvid').value = result.dtenvid;
+						document.getElementById('dtinterval').value = result.dtinterval;
+					},
+					error: function (res, flagError, xhr) {
+						console.error(flagError);
+						console.log(res);
+					}
+				});
+			}
+			if (evt.detail.page == "pagefroniussolardata") {
 				var req = phonon.ajax({
 					method: 'GET',
 					url: 'info',

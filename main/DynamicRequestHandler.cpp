@@ -225,6 +225,48 @@ bool DynamicRequestHandler::HandleDynatraceIntegrationRequest(std::list<TParam>&
 }
 
 
+bool DynamicRequestHandler::HandleFroniusSolarDataRequest(std::list<TParam>& params, HttpResponse& rResponse){
+
+    DynatraceAction* dtHandleRequest = mpUfo->dt.enterAction("Handle Fronius Solar Data Request");
+	String sEnvId;
+	String sApiToken;
+	bool bEnabled = false;
+	int iInterval = 0;
+
+	String sBody;
+
+	std::list<TParam>::iterator it = params.begin();
+	while (it != params.end()){
+		if ((*it).paramName == "dtenabled")
+			bEnabled = (*it).paramValue;
+		else if ((*it).paramName == "dtenvid")
+			sEnvId = (*it).paramValue;
+		else if ((*it).paramName == "dtapitoken")
+			sApiToken = (*it).paramValue;
+		else if ((*it).paramName == "dtinterval")
+			iInterval = (*it).paramValue.toInt();
+		it++;
+	}
+
+	mpUfo->GetConfig().mbDTEnabled = bEnabled;
+	mpUfo->GetConfig().msDTEnvIdOrUrl = sEnvId;
+	if (sApiToken.length())
+		mpUfo->GetConfig().msDTApiToken = sApiToken;
+	mpUfo->GetConfig().miDTInterval = iInterval;
+
+	if (mpUfo->GetConfig().Write())
+		mpUfo->GetDtIntegration().ProcessConfigChange();
+
+	ESP_LOGI(tag, "Fronius Solar Data Saved");
+
+	rResponse.AddHeader(HttpResponse::HeaderNoCache);
+	rResponse.AddHeader("Location: /#!pagefroniussolardata");
+	rResponse.SetRetCode(302);
+	mpUfo->dt.leaveAction(dtHandleRequest);
+	return rResponse.Send();
+}
+
+
 bool DynamicRequestHandler::HandleDynatraceMonitoringRequest(std::list<TParam>& params, HttpResponse& rResponse){
 
     DynatraceAction* dtHandleRequest = mpUfo->dt.enterAction("Handle Dynatrace Monitoring Request");	

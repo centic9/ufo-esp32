@@ -1,6 +1,5 @@
-#include "DynatraceIntegration.h"
-#include "DynatraceAction.h"
 #include "FroniusSolarData.h"
+#include "DynatraceAction.h"
 #include "WebClient.h"
 #include "Url.h"
 #include "Ufo.h"
@@ -15,13 +14,13 @@ static const char* LOGTAG = "Dynatrace";
 
 
 typedef struct{
-    DynatraceIntegration* pIntegration;
+    FroniusSolarData* pIntegration;
     __uint8_t uTaskId;
 } TDtTaskParam;
 
-void task_function_dynatrace_integration(void *pvParameter)
+void task_function_fronius_solar_data(void *pvParameter)
 {
-    ESP_LOGI(LOGTAG, "task_function_dynatrace_integration");
+    ESP_LOGI(LOGTAG, "task_function_fronius_solar_data");
     TDtTaskParam* p = (TDtTaskParam*)pvParameter;
     ESP_LOGI(LOGTAG, "run pIntegration");
 	p->pIntegration->Run(p->uTaskId);
@@ -32,7 +31,7 @@ void task_function_dynatrace_integration(void *pvParameter)
 }
 
 
-DynatraceIntegration::DynatraceIntegration() {
+FroniusSolarData::FroniusSolarData() {
     miTotalProblems = -1;
     miApplicationProblems = -1;
     miServiceProblems = -1;
@@ -42,14 +41,14 @@ DynatraceIntegration::DynatraceIntegration() {
 }
 
 
-DynatraceIntegration::~DynatraceIntegration() {
+FroniusSolarData::~FroniusSolarData() {
 
 }
 
 
-void DynatraceIntegration::Init(Ufo* pUfo, DisplayCharter* pDisplayLowerRing, DisplayCharter* pDisplayUpperRing) {
+void FroniusSolarData::Init(Ufo* pUfo, DisplayCharter* pDisplayLowerRing, DisplayCharter* pDisplayUpperRing) {
 	ESP_LOGI(LOGTAG, "Init");
-    DynatraceAction* dtIntegration = pUfo->dt.enterAction("Init DynatraceIntegration");	
+    DynatraceAction* dtIntegration = pUfo->dt.enterAction("Init FroniusSolarData");	
 
     mpUfo = pUfo;  
     mpDisplayLowerRing = pDisplayLowerRing;
@@ -65,7 +64,7 @@ void DynatraceIntegration::Init(Ufo* pUfo, DisplayCharter* pDisplayLowerRing, Di
 }
 
 // care about starting or ending the task
-void DynatraceIntegration::ProcessConfigChange(){
+void FroniusSolarData::ProcessConfigChange(){
     if (!mInitialized)
         return; 
 
@@ -77,7 +76,7 @@ void DynatraceIntegration::ProcessConfigChange(){
             pParam->pIntegration = this;
             pParam->uTaskId = mActTaskId;
             ESP_LOGI(LOGTAG, "Create Task %d", mActTaskId);
-            xTaskCreate(&task_function_dynatrace_integration, "Task_DynatraceIntegration", 8192, pParam, 5, NULL);
+            xTaskCreate(&task_function_fronius_solar_data, "Task_FroniusSolarData", 8192, pParam, 5, NULL);
             ESP_LOGI(LOGTAG, "task created");
         }
     }
@@ -89,7 +88,7 @@ void DynatraceIntegration::ProcessConfigChange(){
     mActConfigRevision++;
 }
 
-void ParseIntegrationUrl(Url& rUrl, String& sEnvIdOrUrl, String& sApiToken){
+void FroniusParseIntegrationUrl(Url& rUrl, String& sEnvIdOrUrl, String& sApiToken){
     String sHelp;
  
     ESP_LOGI(LOGTAG, "%s", sEnvIdOrUrl.c_str());
@@ -121,7 +120,7 @@ void ParseIntegrationUrl(Url& rUrl, String& sEnvIdOrUrl, String& sApiToken){
     rUrl.Parse(sHelp);
  }
 
-void DynatraceIntegration::Run(__uint8_t uTaskId) {
+void FroniusSolarData::Run(__uint8_t uTaskId) {
     __uint8_t uConfigRevision = mActConfigRevision - 1;
     vTaskDelay(5000 / portTICK_PERIOD_MS);
 	ESP_LOGD(LOGTAG, "Run");
@@ -130,7 +129,7 @@ void DynatraceIntegration::Run(__uint8_t uTaskId) {
             //Configuration is not atomic - so in case of a change there is the possibility that we use inconsistent credentials - but who cares (the next time it would be fine again)
             if (uConfigRevision != mActConfigRevision){
                 uConfigRevision = mActConfigRevision; //memory barrier would be needed here
-                ParseIntegrationUrl(mDtUrl, mpConfig->msDTEnvIdOrUrl, mpConfig->msDTApiToken);
+                FroniusParseIntegrationUrl(mDtUrl, mpConfig->msDTEnvIdOrUrl, mpConfig->msDTApiToken);
             }
             GetData();
             ESP_LOGD(LOGTAG, "free heap after processing DT: %i", esp_get_free_heap_size());            
@@ -150,7 +149,7 @@ void DynatraceIntegration::Run(__uint8_t uTaskId) {
     }
 }
 
-void DynatraceIntegration::GetData() {
+void FroniusSolarData::GetData() {
 	ESP_LOGD(LOGTAG, "polling");
     DynatraceAction* dtPollApi = mpUfo->dt.enterAction("Poll Dynatrace API");	
     if (dtClient.Prepare(&mDtUrl)) {
@@ -174,7 +173,7 @@ void DynatraceIntegration::GetData() {
     mpUfo->dt.leaveAction(dtPollApi);
 }
 
-void DynatraceIntegration::HandleFailure() {
+void FroniusSolarData::HandleFailure() {
     mpDisplayUpperRing->Init();
     mpDisplayLowerRing->Init();
     mpDisplayUpperRing->SetLeds(0, 3, 0x0000ff);
@@ -188,7 +187,7 @@ void DynatraceIntegration::HandleFailure() {
 }
 
 
-void DynatraceIntegration::DisplayDefault() {
+void FroniusSolarData::DisplayDefault() {
 	ESP_LOGD(LOGTAG, "DisplayDefault: %i", miTotalProblems);
     mpDisplayLowerRing->Init();
     mpDisplayUpperRing->Init();
@@ -229,7 +228,7 @@ void DynatraceIntegration::DisplayDefault() {
 }
 
 
-void DynatraceIntegration::Process(String& jsonString) {
+void FroniusSolarData::Process(String& jsonString) {
     
     cJSON* parentJson = cJSON_Parse(jsonString.c_str());
     if (!parentJson)

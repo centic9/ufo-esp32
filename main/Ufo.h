@@ -8,6 +8,7 @@
 #include "DynatraceIntegration.h"
 #include "DynatraceMonitoring.h"
 #include "AWSIntegration.h"
+#include "FroniusSolarData.h"
 #include "Wifi.h"
 #include "Config.h"
 #include "UfoWebServer.h"
@@ -35,6 +36,7 @@ public:
 	DisplayCharterLogo& 	GetLogoDisplay() 	{ return mDisplayCharterLogo; };
 	ApiStore& 				GetApiStore() 		{ return mApiStore; };
 	DynatraceIntegration&	GetDtIntegration() 	{ return mDt; };
+	FroniusSolarData&	    GetSolarData() 	    { return mSolar; };
 	AWSIntegration&			GetAWSIntegration() { return mAws; };
     String&					GetId()             { return mId; };
 
@@ -62,6 +64,7 @@ private:
 	ApiStore mApiStore;
 
 	DynatraceIntegration mDt;
+	FroniusSolarData mSolar;
 	AWSIntegration mAws;
 
 	bool mbButtonPressed;

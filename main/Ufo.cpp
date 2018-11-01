@@ -4,6 +4,7 @@
 #include "DynatraceMonitoring.h"
 #include "DynatraceAction.h"
 #include "AWSIntegration.h"
+#include "FroniusSolarData.h"
 #include "DotstarStripe.h"
 #include "esp_system.h"
 #include "nvs_flash.h"
@@ -98,6 +99,8 @@ void Ufo::Start(){
 		mDt.Init(this, &mDisplayCharterLevel1, &mDisplayCharterLevel2);
 		// AWS communication layer
 		mAws.Init(this);
+		// Fronius Solar Integration
+		mSolar.Init(this, &mDisplayCharterLevel1, &mDisplayCharterLevel2);
 	}
 	dt.leaveAction(dtStartup);
 
@@ -117,7 +120,7 @@ void Ufo::TaskWebServer(){
 void Ufo::TaskDisplay(){
 	__uint8_t uSendState = 0;
 	while (1){
-		if (mWifi.IsConnected() && (mbApiCallReceived || (mDt.IsActive() && mStateDisplay.IpShownLongEnough()))){
+		if (mWifi.IsConnected() && (mbApiCallReceived || ((mDt.IsActive() || mSolar.IsActive()) && mStateDisplay.IpShownLongEnough()))){
 			if (!uSendState){
 				mDisplayCharterLevel1.Display(mStripeLevel1, true);
 				mDisplayCharterLevel2.Display(mStripeLevel2, true);
