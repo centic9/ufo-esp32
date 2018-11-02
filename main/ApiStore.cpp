@@ -1,4 +1,5 @@
 #include "ApiStore.h"
+#include <nvs.h>
 #include <freertos/FreeRTOS.h>
 #include <esp_log.h>
 

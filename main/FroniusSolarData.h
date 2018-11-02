@@ -3,12 +3,10 @@
 
 #include "WebClient.h"
 #include "Url.h"
-#include "Wifi.h"
 #include "DisplayCharter.h"
 #include "DisplayCharterLogo.h"
 #include "Config.h"
 #include "String.h"
-#include <cJSON.h>
 
 
 class Ufo;

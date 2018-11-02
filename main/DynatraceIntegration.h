@@ -3,7 +3,6 @@
 
 #include "WebClient.h"
 #include "Url.h"
-#include "Wifi.h"
 #include "DisplayCharter.h"
 #include "Config.h"
 #include "String.h"

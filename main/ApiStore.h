@@ -8,7 +8,6 @@
 #ifndef MAIN_APISTORE_H_
 #define MAIN_APISTORE_H_
 
-#include "nvs.h"
 #include "String.h"
 #include <list>
 

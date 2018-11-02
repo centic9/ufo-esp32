@@ -2,7 +2,6 @@
 #define MAIN_DYNATRACEACTION_H_
 
 #include "String.h"
-#include <cJSON.h>
 
 
 class DynatraceMonitoring;

@@ -6,7 +6,6 @@
 #include "WebClient.h"
 #include "CriticalSection.h"
 #include "String.h"
-#include <cJSON.h>
 
 typedef enum {
     UNKNOWN = 0,
