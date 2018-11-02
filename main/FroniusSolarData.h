@@ -5,6 +5,7 @@
 #include "Url.h"
 #include "Wifi.h"
 #include "DisplayCharter.h"
+#include "DisplayCharterLogo.h"
 #include "Config.h"
 #include "String.h"
 #include <cJSON.h>
@@ -19,7 +20,8 @@ public:
     FroniusSolarData();
 	virtual ~FroniusSolarData();
     
-    void Init(Ufo* pUfo, DisplayCharter* pDisplayLowerRing, DisplayCharter* pDisplayUpperRing);
+    void Init(Ufo* pUfo, DisplayCharter* pDisplayLowerRing, DisplayCharter* pDisplayUpperRing,
+            DisplayCharterLogo* pDisplayCharterLogo);
     void ProcessConfigChange();
     void Run(__uint8_t uTaskId);
     bool IsActive() { return mEnabled; };
@@ -36,6 +38,7 @@ private:
     Ufo* mpUfo;  
     DisplayCharter* mpDisplayLowerRing;
     DisplayCharter* mpDisplayUpperRing;
+    DisplayCharterLogo* mpDisplayCharterLogo;
     Config* mpConfig;
 //	Wifi* mpWifi;
     
@@ -49,6 +52,7 @@ private:
 
     int miSOC;
     double mdPV;
+    String msBatteryMode;
 };
 
 #endif

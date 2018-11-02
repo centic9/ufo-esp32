@@ -100,7 +100,7 @@ void Ufo::Start(){
 		// AWS communication layer
 		mAws.Init(this);
 		// Fronius Solar Integration
-		mSolar.Init(this, &mDisplayCharterLevel1, &mDisplayCharterLevel2);
+		mSolar.Init(this, &mDisplayCharterLevel1, &mDisplayCharterLevel2, &mDisplayCharterLogo);
 	}
 	dt.leaveAction(dtStartup);
 
