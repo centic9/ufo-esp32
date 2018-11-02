@@ -403,14 +403,30 @@
 						<p>
 							Connect your UFO to a Fronius Solar Energy product via the Fronius Solar API.<br />
 							This allows to visualize the current power produced by a Photovoltaic array and the
-							percentage of power in an accompaning storage system.<br />
+							percentage of power in an accompaning storage system.
+						</p>
+						<p>
 							Following metrics will then be visualized by the UFO:
 						<ul>
-							Current power input (blue)<br />
-							Current storage percentage (green)
+							<li>Upper LED stripe: Current power input (blue)</li>
+							<li>Lower LED stripe: Current storage percentage (green)</li>
 						</ul>
-						Where the full circle means maximum power generation or fully charged storage<br />
-						Usually a URL for a local environment is necessary as no authentication is supported currently<br />
+						Where the full circle means maximum power generation or fully charged storage
+						</p>
+						<p>
+						Currently a local network connection to the system is necessary as no authentication is supported by
+						the Fronius Solar API.
+						</p>
+						<p>
+						Minimum requirements:<br/>
+						<ul>
+							<li>
+								Fronius Hybrid: 1.2.1-X or newer
+							</li>
+							<li>
+								Fronius Non Hybrid: 3.3.9-X
+							</li>
+						</ul>
 						</p>
 						<ul class="list">
 							<li class="">
