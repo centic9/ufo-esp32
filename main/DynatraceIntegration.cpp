@@ -194,14 +194,14 @@ void DynatraceIntegration::DisplayDefault() {
 
     switch (miTotalProblems){
         case 0:
-          mpDisplayUpperRing->SetLeds(0, 15, 0x00ff00);
-          mpDisplayLowerRing->SetLeds(0, 15, 0x00ff00);
+          mpDisplayUpperRing->SetLeds(0, RING_LEDCOUNT, 0x00ff00);
+          mpDisplayLowerRing->SetLeds(0, RING_LEDCOUNT, 0x00ff00);
           mpDisplayUpperRing->SetMorph(4000, 6);
           mpDisplayLowerRing->SetMorph(4000, 6);
           break;
         case 1:
-          mpDisplayUpperRing->SetLeds(0, 15, (miApplicationProblems > 0) ? 0xff0000 : ((miServiceProblems > 0) ? 0xff00aa : 0xffaa00));
-          mpDisplayLowerRing->SetLeds(0, 15, (miApplicationProblems > 0) ? 0xff0000 : ((miServiceProblems > 0) ? 0xff00aa : 0xffaa00));
+          mpDisplayUpperRing->SetLeds(0, RING_LEDCOUNT, (miApplicationProblems > 0) ? 0xff0000 : ((miServiceProblems > 0) ? 0xff00aa : 0xffaa00));
+          mpDisplayLowerRing->SetLeds(0, RING_LEDCOUNT, (miApplicationProblems > 0) ? 0xff0000 : ((miServiceProblems > 0) ? 0xff00aa : 0xffaa00));
           mpDisplayUpperRing->SetMorph(1000, 8);
           mpDisplayLowerRing->SetMorph(1000, 8);
           break;

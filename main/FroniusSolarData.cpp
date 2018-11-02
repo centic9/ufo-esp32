@@ -12,8 +12,6 @@
 
 static const char* LOGTAG = "FroniusSolar";
 
-static const int LED_COUNT = 15;
-
 typedef struct{
     FroniusSolarData* pIntegration;
     __uint8_t uTaskId;
@@ -185,20 +183,20 @@ void FroniusSolarData::DisplayDefault() {
     mpDisplayCharterLogo->Init();
 
     // map values to 15 LEDs each
-    int topLedCount = (int)(((double)LED_COUNT)/100*miSOC);
-    int bottomLedCount = (int)(((double)LED_COUNT)/ mpConfig->miSolarMax * mdPV);
+    int topLedCount = (int)(((double)RING_LEDCOUNT)/100*miSOC);
+    int bottomLedCount = (int)(((double)RING_LEDCOUNT)/ mpConfig->miSolarMax * mdPV);
 
     ESP_LOGI(LOGTAG, "current SOC: %i: %i, current PV: %f (max: %i): %i, battery mode: %s",
         miSOC, topLedCount, mdPV, mpConfig->miSolarMax, bottomLedCount, msBatteryMode.c_str());
 
-    mpDisplayUpperRing->SetLeds(0, LED_COUNT, 0x000000);
+    mpDisplayUpperRing->SetLeds(0, RING_LEDCOUNT, 0x000000);
     if(topLedCount > 0) {
         mpDisplayUpperRing->SetLeds(0, topLedCount, 0x002200);
     }
 
-    mpDisplayLowerRing->SetLeds(0, LED_COUNT, 0x000000);
+    mpDisplayLowerRing->SetLeds(0, RING_LEDCOUNT, 0x000000);
     if(bottomLedCount > 0) {
-        mpDisplayLowerRing->SetLeds(LED_COUNT - bottomLedCount, bottomLedCount, 0x000044);
+        mpDisplayLowerRing->SetLeds(RING_LEDCOUNT - bottomLedCount, bottomLedCount, 0x000044);
     }
 
     // Visualize Battery_Mode in the colors of the Logo

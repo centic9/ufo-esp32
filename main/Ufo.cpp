@@ -143,8 +143,8 @@ void Ufo::TaskDisplay(){
 		if (!gpio_get_level(GPIO_NUM_0)){
 			if (!mbButtonPressed){
 				ESP_LOGI("Ufo", "button pressed");
-				mDisplayCharterLevel1.SetLeds(0, 15, 0x440044);
-				mDisplayCharterLevel2.SetLeds(0, 15, 0x440044);
+				mDisplayCharterLevel1.SetLeds(0, RING_LEDCOUNT, 0x440044);
+				mDisplayCharterLevel2.SetLeds(0, RING_LEDCOUNT, 0x440044);
 				mDisplayCharterLevel1.Display(mStripeLevel1, true);
 				mDisplayCharterLevel2.Display(mStripeLevel2, true);
 				vTaskDelay(200);
