@@ -176,8 +176,8 @@ bool DynamicRequestHandler::HandleInfoRequest(std::list<TParam>& params, HttpRes
 	    sBody.printf("\"dtinterval\":\"%u\",", mpUfo->GetConfig().miDTInterval);
 	sBody.printf("\"solarenabled\":\"%u\",", mpUfo->GetConfig().mbSolarEnabled);
 	sBody.printf("\"solarurl\":\"%s\",", mpUfo->GetConfig().msSolarUrl.c_str());
-	if(mpUfo->GetConfig().msSolarMax > 0)
-	    sBody.printf("\"solarmax\":\"%u\",", mpUfo->GetConfig().msSolarMax);
+	if(mpUfo->GetConfig().miSolarMax > 0)
+	    sBody.printf("\"solarmax\":\"%u\",", mpUfo->GetConfig().miSolarMax);
 	if(mpUfo->GetConfig().miSolarInterval > 0)
 	    sBody.printf("\"solarinterval\":\"%u\",", mpUfo->GetConfig().miSolarInterval);
 	sBody.printf("\"dtmonitoring\":\"%u\"", mpUfo->GetConfig().mbDTMonitoring);
@@ -257,7 +257,7 @@ bool DynamicRequestHandler::HandleFroniusSolarDataRequest(std::list<TParam>& par
 
 	mpUfo->GetConfig().mbSolarEnabled = bEnabled;
 	mpUfo->GetConfig().msSolarUrl = sUrl;
-	mpUfo->GetConfig().msSolarMax = iMax;
+	mpUfo->GetConfig().miSolarMax = iMax;
 	mpUfo->GetConfig().miSolarInterval = iInterval;
 
 	if (mpUfo->GetConfig().Write())

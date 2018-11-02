@@ -46,7 +46,7 @@ public:
     int miDTInterval;
 
     String msSolarUrl;
-    int msSolarMax;
+    int miSolarMax;
 	bool mbSolarEnabled;
     int miSolarInterval;
 

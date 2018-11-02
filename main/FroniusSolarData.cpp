@@ -12,6 +12,7 @@
 
 static const char* LOGTAG = "FroniusSolar";
 
+static const int LED_COUNT = 15;
 
 typedef struct{
     FroniusSolarData* pIntegration;
@@ -170,57 +171,42 @@ void FroniusSolarData::HandleFailure() {
 
 
 void FroniusSolarData::DisplayDefault() {
-	ESP_LOGW(LOGTAG, "Unimplemented: DisplayDefault: %d/%f", miSOC, mdPV);
-// TODO
-	ESP_LOGD(LOGTAG, "DisplayDefault: %i", -1);
+	//ESP_LOGW(LOGTAG, "Unimplemented: DisplayDefault: %d/%f", miSOC, mdPV);
+
+	ESP_LOGD(LOGTAG, "DisplayDefault: %d/%f", miSOC, mdPV);
     mpDisplayLowerRing->Init();
     mpDisplayUpperRing->Init();
 
-    /*switch (miTotalProblems){
-        case 0:
-          mpDisplayUpperRing->SetLeds(0, 15, 0x00ff00);
-          mpDisplayLowerRing->SetLeds(0, 15, 0x00ff00);
-          mpDisplayUpperRing->SetMorph(4000, 6);
-          mpDisplayLowerRing->SetMorph(4000, 6);
-          break;
-        case 1:
-          mpDisplayUpperRing->SetLeds(0, 15, (miApplicationProblems > 0) ? 0xff0000 : ((miServiceProblems > 0) ? 0xff00aa : 0xffaa00));
-          mpDisplayLowerRing->SetLeds(0, 15, (miApplicationProblems > 0) ? 0xff0000 : ((miServiceProblems > 0) ? 0xff00aa : 0xffaa00));
-          mpDisplayUpperRing->SetMorph(1000, 8);
-          mpDisplayLowerRing->SetMorph(1000, 8);
-          break;
-        case 2:
-          mpDisplayUpperRing->SetLeds(0, 7, (miApplicationProblems > 0) ? 0xff0000 : ((miServiceProblems > 0) ? 0xff00aa : 0xffaa00));
-          mpDisplayLowerRing->SetLeds(0, 7, (miApplicationProblems > 0) ? 0xff0000 : ((miServiceProblems > 0) ? 0xff00aa : 0xffaa00));
-          mpDisplayUpperRing->SetLeds(8, 6, (miApplicationProblems > 1) ? 0xff0000 : ((miApplicationProblems + miServiceProblems > 1) ? 0xff00aa : 0xffaa00));
-          mpDisplayLowerRing->SetLeds(8, 6, (miApplicationProblems > 1) ? 0xff0000 : ((miApplicationProblems + miServiceProblems > 1) ? 0xff00aa : 0xffaa00));
-          mpDisplayUpperRing->SetWhirl(180, true);
-          mpDisplayLowerRing->SetWhirl(180, true);
-          break;
-        default:
-          mpDisplayUpperRing->SetLeds(0, 4, (miApplicationProblems > 0) ? 0xff0000 : ((miServiceProblems > 0) ? 0xff00aa : 0xffaa00));
-          mpDisplayLowerRing->SetLeds(0, 4, (miApplicationProblems > 0) ? 0xff0000 : ((miServiceProblems > 0) ? 0xff00aa : 0xffaa00));
-          mpDisplayUpperRing->SetLeds(5, 4, (miApplicationProblems > 1) ? 0xff0000 : ((miApplicationProblems + miServiceProblems > 1) ? 0xff00aa : 0xffaa00));
-          mpDisplayLowerRing->SetLeds(5, 4, (miApplicationProblems > 1) ? 0xff0000 : ((miApplicationProblems + miServiceProblems > 1) ? 0xff00aa : 0xffaa00));
-          mpDisplayUpperRing->SetLeds(10, 4, (miApplicationProblems > 2) ? 0xff0000 : ((miApplicationProblems + miServiceProblems > 2) ? 0xff00aa : 0xffaa00));
-          mpDisplayLowerRing->SetLeds(10, 4, (miApplicationProblems > 2) ? 0xff0000 : ((miApplicationProblems + miServiceProblems > 2) ? 0xff00aa : 0xffaa00));
-          mpDisplayUpperRing->SetWhirl(180, true);
-          mpDisplayLowerRing->SetWhirl(180, true);
-          break;
-      }
-*/
+    // map values to 15 LEDs each
+    int topLedCount = (int)(((double)LED_COUNT)/100*miSOC);
+    int bottomLedCount = (int)(((double)LED_COUNT)/ mpConfig->miSolarMax * mdPV);
+
+    ESP_LOGI(LOGTAG, "current SOC: %i: %i, current PV: %f (max: %i): %i", miSOC, topLedCount, mdPV, mpConfig->miSolarMax, bottomLedCount);
+    mpDisplayUpperRing->SetLeds(0, LED_COUNT, 0x000000);
+    if(topLedCount > 0) {
+        mpDisplayUpperRing->SetLeds(0, topLedCount, 002200);
+    }
+
+    mpDisplayLowerRing->SetLeds(0, LED_COUNT, 0x000000);
+    if(bottomLedCount > 0) {
+        mpDisplayLowerRing->SetLeds(LED_COUNT - bottomLedCount, bottomLedCount, 000044);
+    }
 }
 
 
 void FroniusSolarData::Process(String& jsonString) {
-	ESP_LOGW(LOGTAG, "Unimplemented: Hand JSON: %s", jsonString.c_str());
-    /* TODO
+	//ESP_LOGW(LOGTAG, "Unimplemented: Handle JSON: %s", jsonString.c_str());
+
     cJSON* parentJson = cJSON_Parse(jsonString.c_str());
-    if (!parentJson)
+    if (!parentJson) {
+        ESP_LOGW(LOGTAG, "Could not parse: %s", jsonString.c_str());
         return;
-    cJSON* json = cJSON_GetObjectItem(parentJson, "result");
-    if (!json)
+    }
+    cJSON* json = cJSON_GetObjectItem(parentJson, "Body");
+    if (!json) {
+        ESP_LOGW(LOGTAG, "Could not get object 'Body': %s", jsonString.c_str());
         return;
+    }
     
     if (LOG_LOCAL_LEVEL >= ESP_LOG_DEBUG){
         char* sJsonPrint = cJSON_Print(json);
@@ -228,35 +214,34 @@ void FroniusSolarData::Process(String& jsonString) {
         free(sJsonPrint);
     }
 
-//    bool changed = false;
-    int iTotalProblems = cJSON_GetObjectItem(json, "totalOpenProblemsCount")->valueint;
-    int iInfrastructureProblems = cJSON_GetObjectItem(cJSON_GetObjectItem(json, "openProblemCounts"), "INFRASTRUCTURE")->valueint;
-    int iApplicationProblems = cJSON_GetObjectItem(cJSON_GetObjectItem(json, "openProblemCounts"), "APPLICATION")->valueint;
-    int iServiceProblems = cJSON_GetObjectItem(cJSON_GetObjectItem(json, "openProblemCounts"), "SERVICE")->valueint;
+    /*
+   "Body" : {
+      "Data" : {
+         "Inverters" : {
+            "1" : {
+               ...
+               "SOC" : 35
+            }
+         },
+         "Site" : {
+            ...
+            "P_PV" : -0.95600000000000007,
+         },
+      }
+   }
+    */
 
-    ESP_LOGI(LOGTAG, "open Dynatrace problems: %i", iTotalProblems);
-    ESP_LOGI(LOGTAG, "open Infrastructure problems: %i", iInfrastructureProblems);
-    ESP_LOGI(LOGTAG, "open Application problems: %i", iApplicationProblems);
-    ESP_LOGI(LOGTAG, "open Service problems: %i", iServiceProblems);
+    cJSON* jsonSOC = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(json, "Data"), "Inverters"), "1"), "SOC");
+    if(!cJSON_IsNull(jsonSOC)) {
+        miSOC = jsonSOC->valueint;
+    }
+
+    cJSON* jsonPV = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(json, "Data"), "Site"), "P_PV");
+    if(!cJSON_IsNull(jsonPV)) {
+        mdPV = jsonPV->valuedouble;
+    }
 
     cJSON_Delete(parentJson);
 
-    if (iInfrastructureProblems != miInfrastructureProblems) {
-//        changed = true;
-        miInfrastructureProblems = iInfrastructureProblems;
-    }
-    if (iApplicationProblems != miApplicationProblems) {
-//        changed = true;
-        miApplicationProblems = iApplicationProblems;
-    }
-    if (iServiceProblems != miServiceProblems) {
-//        changed = true;
-        miServiceProblems = iServiceProblems;
-    }
-    miTotalProblems = iTotalProblems;
-
-//    if (changed) {
-        DisplayDefault();
-//    }
-*/
+    DisplayDefault();
 }
