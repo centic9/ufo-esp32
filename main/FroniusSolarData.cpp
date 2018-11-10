@@ -309,6 +309,11 @@ void FroniusSolarData::Process(String& jsonString) {
     cJSON* jsonSOC = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(json, "Data"), "Inverters"), "1"), "SOC");
     if(!cJSON_IsNull(jsonSOC)) {
         miSOC = jsonSOC->valueint;
+
+        // aprox. 5% are always kept in the battery and are not available for consumption
+        if(miSOC > 5) {
+            miSOC -= 5;
+        }
     }
 
     cJSON* jsonBatteryMode = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(json, "Data"), "Inverters"), "1"), "Battery_Mode");
