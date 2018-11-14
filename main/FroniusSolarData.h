@@ -27,6 +27,8 @@ public:
 private:
 
     void GetData();
+    void SendDataToDynatrace();
+    void CreateDynatraceDeviceAndMetric();
     void Process(String& jsonString);
     void DisplayDefault();
     void HandleFailure();
@@ -39,10 +41,17 @@ private:
     DisplayCharterLogo* mpDisplayCharterLogo;
     Config* mpConfig;
 //	Wifi* mpWifi;
-    
+
+    // for fetching Data from the Fronius appliance
     Url mSolarUrl;
     String mSolarUrlString;
-    
+
+    // for sending metrics to Dynatrace API
+    Url mDtUrlMetric;
+    String mDtUrlMetricString;
+    Url mDtUrlDevice;
+    String mDtUrlDeviceString;
+
     bool mInitialized = false;
     bool mEnabled;
     __uint8_t mActTaskId; 

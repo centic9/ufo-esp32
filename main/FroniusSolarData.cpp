@@ -104,7 +104,52 @@ void FroniusParseIntegrationUrl(Url& rUrl, String& sSolarUrl){
     ESP_LOGD(LOGTAG, "URL: %s", sHelp.c_str());
     rUrl.Clear();
     rUrl.Parse(sHelp);
- }
+}
+
+
+void ParseDynatraceUrl(Url& rUrlMetric, Url& rUrlDevice, String& sEnvIdOrUrl, String& sApiToken){
+    String sHelpMetric;
+    String sHelpDevice;
+
+    ESP_LOGI(LOGTAG, "%s", sEnvIdOrUrl.c_str());
+    ESP_LOGD(LOGTAG, "%s", sApiToken.c_str());
+
+    if (sEnvIdOrUrl.length()){
+        if (sEnvIdOrUrl.indexOf(".") < 0){ //an environment id
+            sHelpMetric.printf("https://%s.live.dynatrace.com/api/v1/timeseries/custom:dost.ufo.solar?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
+            sHelpDevice.printf("https://%s.live.dynatrace.com/api/v1/entity/infrastructure/custom/dost_solar?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
+        }
+        else{
+            if (sEnvIdOrUrl.startsWith("http")){
+                if (sEnvIdOrUrl.charAt(sEnvIdOrUrl.length()-1) == '/') {
+                    sHelpMetric.printf("%sapi/v1/timeseries/custom:dost.ufo.solar?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
+                    sHelpDevice.printf("%sapi/v1/entity/infrastructure/custom/dost_solar?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
+                } else {
+                    sHelpMetric.printf("%s/api/v1/timeseries/custom:dost.ufo.solar?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
+                    sHelpDevice.printf("%s/api/v1/entity/infrastructure/custom/dost_solar?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
+                }
+            }
+            else{
+                if (sEnvIdOrUrl.charAt(sEnvIdOrUrl.length()-1) == '/') {
+                    sHelpMetric.printf("https://%sapi/v1/timeseries/custom:dost.ufo.solar?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
+                    sHelpDevice.printf("https://%sapi/v1/entity/infrastructure/custom/dost_solar?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
+                } else {
+                    sHelpMetric.printf("https://%s/api/v1/timeseries/custom:dost.ufo.solar?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
+                    sHelpDevice.printf("https://%s/api/v1/entity/infrastructure/custom/dost_solar?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
+                }
+            }
+
+        }
+    }
+
+    ESP_LOGD(LOGTAG, "URL-Metric: %s", sHelpMetric.c_str());
+    ESP_LOGD(LOGTAG, "URL-Device: %s", sHelpDevice.c_str());
+    rUrlMetric.Clear();
+    rUrlMetric.Parse(sHelpMetric);
+    rUrlDevice.Clear();
+    rUrlDevice.Parse(sHelpDevice);
+}
+
 
 void FroniusSolarData::Run(__uint8_t uTaskId) {
     __uint8_t uConfigRevision = mActConfigRevision - 1;
@@ -116,8 +161,19 @@ void FroniusSolarData::Run(__uint8_t uTaskId) {
             if (uConfigRevision != mActConfigRevision){
                 uConfigRevision = mActConfigRevision; //memory barrier would be needed here
                 FroniusParseIntegrationUrl(mSolarUrl, mpConfig->msSolarUrl);
+
+                if(mpConfig->msDTEnvIdOrUrl.length()) {
+                    ParseDynatraceUrl(mDtUrlMetric, mDtUrlDevice, mpConfig->msDTEnvIdOrUrl, mpConfig->msDTApiToken);
+
+                    CreateDynatraceDeviceAndMetric();
+                }
             }
+
             GetData();
+            if(mpConfig->msDTEnvIdOrUrl.length()) {
+                SendDataToDynatrace();
+            }
+
             ESP_LOGD(LOGTAG, "free heap after processing Fronius: %i", esp_get_free_heap_size());
 
             for (int i=0 ; i < mpConfig->miSolarInterval ; i++){
@@ -148,7 +204,7 @@ void FroniusSolarData::GetData() {
             Process(response);
             mpUfo->dt.leaveAction(solarProcess);
         } else {
-            ESP_LOGE(LOGTAG, "Communication with Dynatrace failed - error %u", responseCode);
+            ESP_LOGE(LOGTAG, "Communication with Fronius API failed - error %u", responseCode);
             DynatraceAction* solarFailure = mpUfo->dt.enterAction("Handle Fronius Solar API failure", dtPollApi);
             HandleFailure();
             mpUfo->dt.leaveAction(solarFailure);
@@ -173,6 +229,77 @@ void FroniusSolarData::HandleFailure() {
     miSOC = -1;
     mdPV = -1;
     msBatteryMode = "";
+}
+
+
+void FroniusSolarData::CreateDynatraceDeviceAndMetric() {
+	ESP_LOGD(LOGTAG, "Creating Dynatrace Custom Metric/Device");
+    DynatraceAction* dtPollApi = mpUfo->dt.enterAction("Prepare Dynatrace Custom Metric/Device");
+    if (solarClient.Prepare(&mDtUrlMetric)) {
+        DynatraceAction* dtHttpPost = mpUfo->dt.enterAction("HTTP POST Request", WEBREQUEST, dtPollApi);
+        String data = String("{\"displayName\":\"Fronius Solar\",\"unit\":\"Count\",\"dimensions\":[\"E_Day\"],\"types\":[\"Fronius\"]}");
+        unsigned short responseCode = solarClient.HttpPost(data);
+        String response = solarClient.GetResponseData();
+        mpUfo->dt.leaveAction(dtHttpPost, &mDtUrlMetricString, responseCode, response.length());
+        if (responseCode == 200) {
+            DynatraceAction* dtProcess = mpUfo->dt.enterAction("Process response from Dynatrace Custom Metric creation", dtPollApi);
+            //Process(response);
+            mpUfo->dt.leaveAction(dtProcess);
+        } else {
+            ESP_LOGE(LOGTAG, "Communication with Dynatrace failed - error %u", responseCode);
+            DynatraceAction* dtFailure = mpUfo->dt.enterAction("Handle Dynatrace API failure", dtPollApi);
+            HandleFailure();
+            mpUfo->dt.leaveAction(dtFailure);
+        }
+    }
+    solarClient.Clear();
+
+    if (solarClient.Prepare(&mDtUrlDevice)) {
+        DynatraceAction* dtHttpPost = mpUfo->dt.enterAction("HTTP POST Request", WEBREQUEST, dtPollApi);
+        String data = String("{\"displayName\":\"Fronius Device\",\"type\":\"Fronius\"}");
+        unsigned short responseCode = solarClient.HttpPost(data);
+        String response = solarClient.GetResponseData();
+        mpUfo->dt.leaveAction(dtHttpPost, &mDtUrlDeviceString, responseCode, response.length());
+        if (responseCode == 200) {
+            DynatraceAction* dtProcess = mpUfo->dt.enterAction("Process response from Dynatrace Custom Device creation", dtPollApi);
+            //Process(response);
+            mpUfo->dt.leaveAction(dtProcess);
+        } else {
+            ESP_LOGE(LOGTAG, "Communication with Dynatrace failed - error %u", responseCode);
+            DynatraceAction* dtFailure = mpUfo->dt.enterAction("Handle Dynatrace API failure", dtPollApi);
+            HandleFailure();
+            mpUfo->dt.leaveAction(dtFailure);
+        }
+    }
+    solarClient.Clear();
+
+    mpUfo->dt.leaveAction(dtPollApi);
+}
+
+
+void FroniusSolarData::SendDataToDynatrace() {
+	ESP_LOGD(LOGTAG, "Sending to dynatrace");
+    DynatraceAction* dtPollApi = mpUfo->dt.enterAction("Send to Dynatrace API");
+    if (solarClient.Prepare(&mDtUrlDevice)) {
+        DynatraceAction* dtHttpPost = mpUfo->dt.enterAction("HTTP POST Request", WEBREQUEST, dtPollApi);
+
+        String data = String();
+        unsigned short responseCode = solarClient.HttpPost(data);
+        String response = solarClient.GetResponseData();
+        mpUfo->dt.leaveAction(dtHttpPost, &mDtUrlDeviceString, responseCode, response.length());
+        if (responseCode == 200) {
+            DynatraceAction* dtProcess = mpUfo->dt.enterAction("Process response from Dynatrace Metrics data", dtPollApi);
+            //Process(response);
+            mpUfo->dt.leaveAction(dtProcess);
+        } else {
+            ESP_LOGE(LOGTAG, "Communication with Dynatrace failed - error %u", responseCode);
+            DynatraceAction* dtFailure = mpUfo->dt.enterAction("Handle Dynatrace API failure", dtPollApi);
+            HandleFailure();
+            mpUfo->dt.leaveAction(dtFailure);
+        }
+    }
+    solarClient.Clear();
+    mpUfo->dt.leaveAction(dtPollApi);
 }
 
 
