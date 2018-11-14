@@ -133,6 +133,7 @@
 				<li class="padded-list" id="liinfosolarurl">Fronius Solar API URL: <span id="infosolarurl">-</span></li>
 				<li class="padded-list" id="liinfosolarmax">Fronius Solar Max power (Watt): <span id="infosolarmax">-</span></li>
 				<li class="padded-list" id="liinfosolarinterval">Fronius Solar Interval: <span id="infosolarinterval">-</span></li>
+				<li class="padded-list" id="liinfosolardtenvid">Dynatrace environment ID or URL for Solar data: <span id="infosolardtenvid">-</span></li>
 
 				<li class="padded-list" id="liinfodtmonitoring">Dynatrace Self-Monitoring: <span id="infodtmonitoring">-</span></li>
 			</ul>
@@ -411,17 +412,17 @@
 							<li>Upper LED stripe: Current power input (blue)</li>
 							<li>Lower LED stripe: Current storage percentage (green)</li>
 							<li>Logo LEDs: Indicate overall battery state: no color on normal operation,
-                                red on a warning state, yellow on a temporary state like startup, preheating, ..
-                                and blue on an unknown state</li>
+								red on a warning state, yellow on a temporary state like startup, preheating, ..
+								and blue on an unknown state</li>
 						</ul>
 						Where the full circle means maximum power generation or fully charged storage
 						</p>
 						<p>
-						Currently a local network connection to the system is necessary as no authentication is supported by
-						the Fronius Solar API.
+							Currently a local network connection to the system is necessary as no authentication is supported by
+							the Fronius Solar API.
 						</p>
 						<p>
-						Minimum requirements:<br/>
+							Minimum requirements:<br/>
 						<ul>
 							<li>
 								Fronius Hybrid: 1.2.1-X or newer
@@ -430,6 +431,9 @@
 								Fronius Non Hybrid: 3.3.9-X
 							</li>
 						</ul>
+						</p>
+						<p>
+							If you specify a Dynatrace environment and an API token, custom metric data is sent via the <a href="https://www.dynatrace.com/support/help/dynatrace-api/environment/timeseries-api/manage-custom-metrics-via-api/">Dynatrace API</a>
 						</p>
 						<ul class="list">
 							<li class="">
@@ -444,6 +448,8 @@
 						<input type="text" name="solarurl" placeholder="URL (like http://192.168.1.10/, usually from the local network)" id="solarurl" />
 						<input type="number" min="10" max="999999" placeholder="max produced power in Watt" name="solarmax" id="solarmax" />
 						<input type="number" min="10" max="300" placeholder="polling interval in sec" name="solarinterval" id="solarinterval" />
+						<input type="text" name="solardtenvid" placeholder="Dynatrace environment ID (tenant) or complete URL (like 'https://mine.dynatrace.com/e/<environment id>')" id="solardtenvid" />
+						<input type="text" name="solardtapitoken" placeholder="Dynatrace API Token" id="solardtapitoken" />
 					</div>
 					<div class="padded-full">
 						<button class="btn btn-submit fit-parent primary" type="submit">Apply settings.</button>
@@ -879,11 +885,19 @@
 							}
 							else
 								document.getElementById('liinfosolarinterval').style = 'Display:None';
+
+							if (result.solardtenvid) {
+								document.getElementById('infosolardtenvid').innerHTML = result.solardtenvid;
+								delete document.getElementById('liinfosolardtenvid').style;
+							}
+							else
+								document.getElementById('liinfosolardtenvid').style = 'Display:None';
 						} else {
 							document.getElementById('infosolarenabled').innerHTML = 'disabled';
 							document.getElementById('liinfosolarurl').style = 'Display:None';
 							document.getElementById('liinfosolarmax').style = 'Display:None';
 							document.getElementById('liinfosolarinterval').style = 'Display:None';
+							document.getElementById('liinfosolardtenvid').style = 'Display:None';
 						}
 
 						if (result.dtmonitoring == '1')
@@ -1017,6 +1031,7 @@
 						document.getElementById('solarurl').value = result.solarurl;
 						document.getElementById('solarmax').value = result.solarmax;
 						document.getElementById('solarinterval').value = result.solarinterval;
+						document.getElementById('solardtenvid').value = result.solardtenvid;
 					},
 					error: function (res, flagError, xhr) {
 						console.error(flagError);

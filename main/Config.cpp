@@ -53,6 +53,8 @@ bool Config::Read(){
 	ReadString(h, "SolarUrl", msSolarUrl);
 	ReadInt(h, "SolarMax", miSolarMax);
 	ReadInt(h, "SolarInterval", miSolarInterval);
+	ReadString(h, "SolarDTEnvId", msSolarDTEnvIdOrUrl);
+	ReadString(h, "SolarDTApiToken", msSolarDTApiToken);
 	ReadBool(h, "DTMonitoring", mbDTMonitoring);
 	ReadBool(h, "SrvSSLEnabled", mbWebServerUseSsl);
 	nvs_get_u16(h, "SrvListenPort", &muWebServerPort);
@@ -113,6 +115,10 @@ bool Config::Write()
 	if (!WriteInt(h, "SolarMax", miSolarMax))
 		return nvs_close(h), false;
 	if (!WriteInt(h, "SolarInterval", miSolarInterval))
+		return nvs_close(h), false;
+	if (!WriteString(h, "SolarDTEnvId", msSolarDTEnvIdOrUrl))
+		return nvs_close(h), false;
+	if (!WriteString(h, "SolarDTApiToken", msSolarDTApiToken))
 		return nvs_close(h), false;
 
 	if (!WriteBool(h, "DTMonitoring", mbDTMonitoring))

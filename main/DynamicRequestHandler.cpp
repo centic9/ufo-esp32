@@ -180,6 +180,8 @@ bool DynamicRequestHandler::HandleInfoRequest(std::list<TParam>& params, HttpRes
 	    sBody.printf("\"solarmax\":\"%u\",", mpUfo->GetConfig().miSolarMax);
 	if(mpUfo->GetConfig().miSolarInterval > 0)
 	    sBody.printf("\"solarinterval\":\"%u\",", mpUfo->GetConfig().miSolarInterval);
+	sBody.printf("\"solardtenvid\":\"%s\",", mpUfo->GetConfig().msSolarDTEnvIdOrUrl.c_str());
+	//sBody.printf("\"solardtapitoken\":\"%s\",", mpUfo->GetConfig().msSolarDTApiToken.c_str());
 	sBody.printf("\"dtmonitoring\":\"%u\"", mpUfo->GetConfig().mbDTMonitoring);
 	sBody += '}';
 
@@ -239,6 +241,8 @@ bool DynamicRequestHandler::HandleFroniusSolarDataRequest(std::list<TParam>& par
 	String sUrl;
 	int iMax = 0;
 	int iInterval = 0;
+	String sEnvId;
+	String sApiToken;
 
 	String sBody;
 
@@ -252,6 +256,10 @@ bool DynamicRequestHandler::HandleFroniusSolarDataRequest(std::list<TParam>& par
 			iMax = (*it).paramValue.toInt();
 		else if ((*it).paramName == "solarinterval")
 			iInterval = (*it).paramValue.toInt();
+		else if ((*it).paramName == "solardtenvid")
+			sEnvId = (*it).paramValue;
+		else if ((*it).paramName == "solardtapitoken")
+			sApiToken = (*it).paramValue;
 		it++;
 	}
 
@@ -259,6 +267,9 @@ bool DynamicRequestHandler::HandleFroniusSolarDataRequest(std::list<TParam>& par
 	mpUfo->GetConfig().msSolarUrl = sUrl;
 	mpUfo->GetConfig().miSolarMax = iMax;
 	mpUfo->GetConfig().miSolarInterval = iInterval;
+	mpUfo->GetConfig().msSolarDTEnvIdOrUrl = sEnvId;
+	if (sApiToken.length())
+		mpUfo->GetConfig().msSolarDTApiToken = sApiToken;
 
 	if (mpUfo->GetConfig().Write())
 		mpUfo->GetDtIntegration().ProcessConfigChange();

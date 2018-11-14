@@ -49,6 +49,8 @@ public:
     int miSolarMax;
 	bool mbSolarEnabled;
     int miSolarInterval;
+    String msSolarDTEnvIdOrUrl;
+    String msSolarDTApiToken;
 
 	bool mbDTMonitoring;
 
