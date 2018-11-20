@@ -27,8 +27,9 @@ public:
 private:
 
     void GetData();
-    void SendDataToDynatrace();
-    void CreateDynatraceDeviceAndMetric();
+    void SendDataToDynatrace(String &series);
+    void CreateDynatraceDevice();
+    void CreateDynatraceMetric(const char* cpName);
     void Process(String& jsonString);
     void DisplayDefault();
     void HandleFailure();

@@ -9,6 +9,7 @@
 #include "esp_system.h"
 #include <esp_log.h>
 #include <cJSON.h>
+#include <sys/time.h>
 
 static const char* LOGTAG = "FroniusSolar";
 
@@ -107,8 +108,7 @@ void FroniusParseIntegrationUrl(Url& rUrl, String& sSolarUrl){
 }
 
 
-void ParseDynatraceUrl(Url& rUrlMetric, Url& rUrlDevice, String& sEnvIdOrUrl, String& sApiToken){
-    String sHelpMetric;
+void ParseDynatraceDeviceUrl(Url& rUrlDevice, String& sEnvIdOrUrl, String& sApiToken){
     String sHelpDevice;
 
     ESP_LOGI(LOGTAG, "%s", sEnvIdOrUrl.c_str());
@@ -116,25 +116,20 @@ void ParseDynatraceUrl(Url& rUrlMetric, Url& rUrlDevice, String& sEnvIdOrUrl, St
 
     if (sEnvIdOrUrl.length()){
         if (sEnvIdOrUrl.indexOf(".") < 0){ //an environment id
-            sHelpMetric.printf("https://%s.live.dynatrace.com/api/v1/timeseries/custom:dost.ufo.solar?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
             sHelpDevice.printf("https://%s.live.dynatrace.com/api/v1/entity/infrastructure/custom/dost_solar?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
         }
         else{
             if (sEnvIdOrUrl.startsWith("http")){
                 if (sEnvIdOrUrl.charAt(sEnvIdOrUrl.length()-1) == '/') {
-                    sHelpMetric.printf("%sapi/v1/timeseries/custom:dost.ufo.solar?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
                     sHelpDevice.printf("%sapi/v1/entity/infrastructure/custom/dost_solar?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
                 } else {
-                    sHelpMetric.printf("%s/api/v1/timeseries/custom:dost.ufo.solar?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
                     sHelpDevice.printf("%s/api/v1/entity/infrastructure/custom/dost_solar?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
                 }
             }
             else{
                 if (sEnvIdOrUrl.charAt(sEnvIdOrUrl.length()-1) == '/') {
-                    sHelpMetric.printf("https://%sapi/v1/timeseries/custom:dost.ufo.solar?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
                     sHelpDevice.printf("https://%sapi/v1/entity/infrastructure/custom/dost_solar?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
                 } else {
-                    sHelpMetric.printf("https://%s/api/v1/timeseries/custom:dost.ufo.solar?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
                     sHelpDevice.printf("https://%s/api/v1/entity/infrastructure/custom/dost_solar?Api-Token=%s", sEnvIdOrUrl.c_str(), sApiToken.c_str());
                 }
             }
@@ -142,12 +137,45 @@ void ParseDynatraceUrl(Url& rUrlMetric, Url& rUrlDevice, String& sEnvIdOrUrl, St
         }
     }
 
-    ESP_LOGD(LOGTAG, "URL-Metric: %s", sHelpMetric.c_str());
     ESP_LOGD(LOGTAG, "URL-Device: %s", sHelpDevice.c_str());
-    rUrlMetric.Clear();
-    rUrlMetric.Parse(sHelpMetric);
     rUrlDevice.Clear();
     rUrlDevice.Parse(sHelpDevice);
+}
+
+
+void ParseDynatraceMetricUrl(Url& rUrlMetric, String& sEnvIdOrUrl, const char* cpMetric, String& sApiToken){
+    String sHelpMetric;
+
+    ESP_LOGI(LOGTAG, "EnvId: %s", sEnvIdOrUrl.c_str());
+    ESP_LOGD(LOGTAG, "Token: %s", sApiToken.c_str());
+    ESP_LOGD(LOGTAG, "Metric: %s", cpMetric);
+
+    if (sEnvIdOrUrl.length()){
+        if (sEnvIdOrUrl.indexOf(".") < 0){ //an environment id
+            sHelpMetric.printf("https://%s.live.dynatrace.com/api/v1/timeseries/%s?Api-Token=%s", sEnvIdOrUrl.c_str(), cpMetric, sApiToken.c_str());
+        }
+        else{
+            if (sEnvIdOrUrl.startsWith("http")){
+                if (sEnvIdOrUrl.charAt(sEnvIdOrUrl.length()-1) == '/') {
+                    sHelpMetric.printf("%sapi/v1/timeseries/%s?Api-Token=%s", sEnvIdOrUrl.c_str(), cpMetric, sApiToken.c_str());
+                } else {
+                    sHelpMetric.printf("%s/api/v1/timeseries/%s?Api-Token=%s", sEnvIdOrUrl.c_str(), cpMetric, sApiToken.c_str());
+                }
+            }
+            else{
+                if (sEnvIdOrUrl.charAt(sEnvIdOrUrl.length()-1) == '/') {
+                    sHelpMetric.printf("https://%sapi/v1/timeseries/%s?Api-Token=%s", sEnvIdOrUrl.c_str(), cpMetric, sApiToken.c_str());
+                } else {
+                    sHelpMetric.printf("https://%s/api/v1/timeseries/%s?Api-Token=%s", sEnvIdOrUrl.c_str(), cpMetric, sApiToken.c_str());
+                }
+            }
+
+        }
+    }
+
+    ESP_LOGD(LOGTAG, "URL-Metric: %s", sHelpMetric.c_str());
+    rUrlMetric.Clear();
+    rUrlMetric.Parse(sHelpMetric);
 }
 
 
@@ -162,17 +190,39 @@ void FroniusSolarData::Run(__uint8_t uTaskId) {
                 uConfigRevision = mActConfigRevision; //memory barrier would be needed here
                 FroniusParseIntegrationUrl(mSolarUrl, mpConfig->msSolarUrl);
 
-                if(mpConfig->msDTEnvIdOrUrl.length()) {
-                    ParseDynatraceUrl(mDtUrlMetric, mDtUrlDevice, mpConfig->msDTEnvIdOrUrl, mpConfig->msDTApiToken);
+                ESP_LOGI(LOGTAG, "DTURL: %s", mpConfig->msSolarDTEnvIdOrUrl.c_str());
+                if(mpConfig->msSolarDTEnvIdOrUrl.length()) {
+                    ParseDynatraceDeviceUrl(mDtUrlDevice, mpConfig->msSolarDTEnvIdOrUrl, mpConfig->msSolarDTApiToken);
+                    CreateDynatraceDevice();
 
-                    CreateDynatraceDeviceAndMetric();
+                    ParseDynatraceMetricUrl(mDtUrlMetric, mpConfig->msSolarDTEnvIdOrUrl, "custom:dost.solar.dt", mpConfig->msSolarDTApiToken);
+                    CreateDynatraceMetric("DT");
+                    ParseDynatraceMetricUrl(mDtUrlMetric, mpConfig->msSolarDTEnvIdOrUrl, "custom:dost.solar.e_day", mpConfig->msSolarDTApiToken);
+                    CreateDynatraceMetric("E_Day");
+                    ParseDynatraceMetricUrl(mDtUrlMetric, mpConfig->msSolarDTEnvIdOrUrl, "custom:dost.solar.e_total", mpConfig->msSolarDTApiToken);
+                    CreateDynatraceMetric("E_Total");
+                    ParseDynatraceMetricUrl(mDtUrlMetric, mpConfig->msSolarDTEnvIdOrUrl, "custom:dost.solar.e_year", mpConfig->msSolarDTApiToken);
+                    CreateDynatraceMetric("E_Year");
+                    ParseDynatraceMetricUrl(mDtUrlMetric, mpConfig->msSolarDTEnvIdOrUrl, "custom:dost.solar.p", mpConfig->msSolarDTApiToken);
+                    CreateDynatraceMetric("P");
+                    ParseDynatraceMetricUrl(mDtUrlMetric, mpConfig->msSolarDTEnvIdOrUrl, "custom:dost.solar.soc", mpConfig->msSolarDTApiToken);
+                    CreateDynatraceMetric("SOC");
+                    ParseDynatraceMetricUrl(mDtUrlMetric, mpConfig->msSolarDTEnvIdOrUrl, "custom:dost.solar.p_akku", mpConfig->msSolarDTApiToken);
+                    CreateDynatraceMetric("P_Akku");
+                    ParseDynatraceMetricUrl(mDtUrlMetric, mpConfig->msSolarDTEnvIdOrUrl, "custom:dost.solar.p_grid", mpConfig->msSolarDTApiToken);
+                    CreateDynatraceMetric("P_Grid");
+                    ParseDynatraceMetricUrl(mDtUrlMetric, mpConfig->msSolarDTEnvIdOrUrl, "custom:dost.solar.p_load", mpConfig->msSolarDTApiToken);
+                    CreateDynatraceMetric("P_Load");
+                    ParseDynatraceMetricUrl(mDtUrlMetric, mpConfig->msSolarDTEnvIdOrUrl, "custom:dost.solar.p_pv", mpConfig->msSolarDTApiToken);
+                    CreateDynatraceMetric("P_PV");
+                    ParseDynatraceMetricUrl(mDtUrlMetric, mpConfig->msSolarDTEnvIdOrUrl, "custom:dost.solar.rel_autononmy", mpConfig->msSolarDTApiToken);
+                    CreateDynatraceMetric("rel_Autonomy");
+                    ParseDynatraceMetricUrl(mDtUrlMetric, mpConfig->msSolarDTEnvIdOrUrl, "custom:dost.solar.rel_selfconsumption", mpConfig->msSolarDTApiToken);
+                    CreateDynatraceMetric("rel_SelfConsumption");
                 }
             }
 
             GetData();
-            if(mpConfig->msDTEnvIdOrUrl.length()) {
-                SendDataToDynatrace();
-            }
 
             ESP_LOGD(LOGTAG, "free heap after processing Fronius: %i", esp_get_free_heap_size());
 
@@ -232,28 +282,9 @@ void FroniusSolarData::HandleFailure() {
 }
 
 
-void FroniusSolarData::CreateDynatraceDeviceAndMetric() {
-	ESP_LOGD(LOGTAG, "Creating Dynatrace Custom Metric/Device");
-    DynatraceAction* dtPollApi = mpUfo->dt.enterAction("Prepare Dynatrace Custom Metric/Device");
-    if (solarClient.Prepare(&mDtUrlMetric)) {
-        DynatraceAction* dtHttpPost = mpUfo->dt.enterAction("HTTP POST Request", WEBREQUEST, dtPollApi);
-        String data = String("{\"displayName\":\"Fronius Solar\",\"unit\":\"Count\",\"dimensions\":[\"E_Day\"],\"types\":[\"Fronius\"]}");
-        unsigned short responseCode = solarClient.HttpPost(data);
-        String response = solarClient.GetResponseData();
-        mpUfo->dt.leaveAction(dtHttpPost, &mDtUrlMetricString, responseCode, response.length());
-        if (responseCode == 200) {
-            DynatraceAction* dtProcess = mpUfo->dt.enterAction("Process response from Dynatrace Custom Metric creation", dtPollApi);
-            //Process(response);
-            mpUfo->dt.leaveAction(dtProcess);
-        } else {
-            ESP_LOGE(LOGTAG, "Communication with Dynatrace failed - error %u", responseCode);
-            DynatraceAction* dtFailure = mpUfo->dt.enterAction("Handle Dynatrace API failure", dtPollApi);
-            HandleFailure();
-            mpUfo->dt.leaveAction(dtFailure);
-        }
-    }
-    solarClient.Clear();
-
+void FroniusSolarData::CreateDynatraceDevice() {
+	ESP_LOGD(LOGTAG, "Creating Dynatrace Custom Device");
+    DynatraceAction* dtPollApi = mpUfo->dt.enterAction("Prepare Dynatrace Custom Device");
     if (solarClient.Prepare(&mDtUrlDevice)) {
         DynatraceAction* dtHttpPost = mpUfo->dt.enterAction("HTTP POST Request", WEBREQUEST, dtPollApi);
         String data = String("{\"displayName\":\"Fronius Device\",\"type\":\"Fronius\"}");
@@ -277,13 +308,43 @@ void FroniusSolarData::CreateDynatraceDeviceAndMetric() {
 }
 
 
-void FroniusSolarData::SendDataToDynatrace() {
-	ESP_LOGD(LOGTAG, "Sending to dynatrace");
+void FroniusSolarData::CreateDynatraceMetric(const char* cpName) {
+	ESP_LOGD(LOGTAG, "Creating Dynatrace Custom Metric");
+    DynatraceAction* dtPollApi = mpUfo->dt.enterAction("Prepare Dynatrace Custom Metric");
+    if (solarClient.Prepare(&mDtUrlMetric)) {
+        DynatraceAction* dtHttpPost = mpUfo->dt.enterAction("HTTP POST Request", WEBREQUEST, dtPollApi);
+        String data = String("{\"displayName\":\"Fronius Solar-");
+        data += cpName;
+        data += "\",\"unit\":\"Count\",\"dimensions\":[\"value\"],\"types\":[\"Fronius\"]}";
+        unsigned short responseCode = solarClient.HttpPost(data);
+        String response = solarClient.GetResponseData();
+        mpUfo->dt.leaveAction(dtHttpPost, &mDtUrlMetricString, responseCode, response.length());
+        if (responseCode == 200) {
+            DynatraceAction* dtProcess = mpUfo->dt.enterAction("Process response from Dynatrace Custom Metric creation", dtPollApi);
+            //Process(response);
+            mpUfo->dt.leaveAction(dtProcess);
+        } else {
+            ESP_LOGE(LOGTAG, "Communication with Dynatrace failed - error %u", responseCode);
+            DynatraceAction* dtFailure = mpUfo->dt.enterAction("Handle Dynatrace API failure", dtPollApi);
+            HandleFailure();
+            mpUfo->dt.leaveAction(dtFailure);
+        }
+    }
+    solarClient.Clear();
+
+    mpUfo->dt.leaveAction(dtPollApi);
+}
+
+
+void FroniusSolarData::SendDataToDynatrace(String &series) {
+	ESP_LOGD(LOGTAG, "Sending to dynatrace: %s", series.c_str());
     DynatraceAction* dtPollApi = mpUfo->dt.enterAction("Send to Dynatrace API");
     if (solarClient.Prepare(&mDtUrlDevice)) {
         DynatraceAction* dtHttpPost = mpUfo->dt.enterAction("HTTP POST Request", WEBREQUEST, dtPollApi);
 
-        String data = String();
+        String data = String("{ \"series\" : [");
+        data += series;
+        data += "] }";
         unsigned short responseCode = solarClient.HttpPost(data);
         String response = solarClient.GetResponseData();
         mpUfo->dt.leaveAction(dtHttpPost, &mDtUrlDeviceString, responseCode, response.length());
@@ -369,6 +430,24 @@ string Battery_Mode ;
     }
 }
 
+long timestamp() {
+    struct timeval tp;
+    gettimeofday(&tp, NULL);
+    return tp.tv_sec * 1000 + tp.tv_usec / 1000;
+}
+
+void addSeries(String &series, const char* cpMetric, cJSON *jsonMetric) {
+    if(cJSON_IsNull(jsonMetric)) {
+        return;
+    }
+
+    if(series.length() > 0) {
+        series += ",";
+    }
+
+    series.printf("{ \"timeseriesId\" : \"%s\", \"dimensions\" : { \"value\" : \"value\" }, \"dataPoints\" : [ [ %d, %f ] ] }",
+        cpMetric, timestamp, jsonMetric->valuedouble);
+}
 
 void FroniusSolarData::Process(String& jsonString) {
     cJSON* parentJson = cJSON_Parse(jsonString.c_str());
@@ -433,7 +512,9 @@ void FroniusSolarData::Process(String& jsonString) {
 }
 */
 
-    cJSON* jsonSOC = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(json, "Data"), "Inverters"), "1"), "SOC");
+    cJSON* jsonData = cJSON_GetObjectItem(json, "Data");
+
+    cJSON* jsonSOC = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(jsonData, "Inverters"), "1"), "SOC");
     if(!cJSON_IsNull(jsonSOC)) {
         miSOC = jsonSOC->valueint;
 
@@ -443,14 +524,59 @@ void FroniusSolarData::Process(String& jsonString) {
         }
     }
 
-    cJSON* jsonBatteryMode = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(json, "Data"), "Inverters"), "1"), "Battery_Mode");
+    cJSON* jsonBatteryMode = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(jsonData, "Inverters"), "1"), "Battery_Mode");
     if(!cJSON_IsNull(jsonBatteryMode)) {
         msBatteryMode = jsonBatteryMode->valuestring;
     }
 
-    cJSON* jsonPV = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(json, "Data"), "Site"), "P_PV");
+    cJSON* jsonPV = cJSON_GetObjectItem(cJSON_GetObjectItem(jsonData, "Site"), "P_PV");
     if(!cJSON_IsNull(jsonPV)) {
         mdPV = jsonPV->valuedouble;
+    }
+
+    if(mpConfig->msSolarDTEnvIdOrUrl.length()) {
+        DynatraceAction* dtSendApi = mpUfo->dt.enterAction("Send Fronius Solar data to Dynatrace");
+        DynatraceAction* solarDataSend = mpUfo->dt.enterAction("Send Fronius Solar Metrics to Dynatrace", dtSendApi);
+
+        String series = String();
+        cJSON* jsonMetric = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(jsonData, "Inverters"), "1"), "DT");
+        addSeries(series, "custom:dost.solar.dt", jsonMetric);
+
+        jsonMetric = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(jsonData, "Inverters"), "1"), "E_Day");
+        addSeries(series, "custom:dost.solar.e_day", jsonMetric);
+
+        jsonMetric = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(jsonData, "Inverters"), "1"), "E_Total");
+        addSeries(series, "custom:dost.solar.e_total", jsonMetric);
+
+        jsonMetric = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(jsonData, "Inverters"), "1"), "E_Year");
+        addSeries(series, "custom:dost.solar.e_year", jsonMetric);
+
+        jsonMetric = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(jsonData, "Inverters"), "1"), "P");
+        addSeries(series, "custom:dost.solar.p", jsonMetric);
+
+        jsonMetric = cJSON_GetObjectItem(cJSON_GetObjectItem(cJSON_GetObjectItem(jsonData, "Inverters"), "1"), "SOC");
+        addSeries(series, "custom:dost.solar.soc", jsonMetric);
+
+        jsonMetric = cJSON_GetObjectItem(cJSON_GetObjectItem(jsonData, "Site"), "P_Akku");
+        addSeries(series, "custom:dost.solar.p_akku", jsonMetric);
+
+        jsonMetric = cJSON_GetObjectItem(cJSON_GetObjectItem(jsonData, "Site"), "P_Grid");
+        addSeries(series, "custom:dost.solar.p_grid", jsonMetric);
+
+        jsonMetric = cJSON_GetObjectItem(cJSON_GetObjectItem(jsonData, "Site"), "P_Load");
+        addSeries(series, "custom:dost.solar.p_load", jsonMetric);
+
+        jsonMetric = cJSON_GetObjectItem(cJSON_GetObjectItem(jsonData, "Site"), "P_PV");
+        addSeries(series, "custom:dost.solar.p_pv", jsonMetric);
+
+        jsonMetric = cJSON_GetObjectItem(cJSON_GetObjectItem(jsonData, "Site"), "rel_Autonomy");
+        addSeries(series, "custom:dost.solar.rel_autonomy", jsonMetric);
+
+        jsonMetric = cJSON_GetObjectItem(cJSON_GetObjectItem(jsonData, "Site"), "rel_SelfConsumption");
+        addSeries(series, "custom:dost.solar.rel_selfconsumption", jsonMetric);
+
+        SendDataToDynatrace(series);
+        mpUfo->dt.leaveAction(solarDataSend);
     }
 
     cJSON_Delete(parentJson);
