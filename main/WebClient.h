@@ -83,6 +83,32 @@ public:
 	 */
 	unsigned short HttpPost(String& sData);
 
+
+	/*
+	 * executes HTTP(S) PUT request
+	 * it stores response in internal dynamic memory in case no DownloadHandler is set
+	 * optionally call SetMaxResponseDataSize() in case the default memory allocation limit of 16kB is too small
+	 * optionally call Clear() to clear the buffer
+	 * @param PUT data and size
+	 * @return
+	 * 		- HTTP response status code
+	 * 		- 0 on error
+	 */
+	unsigned short HttpPut(const char* data, unsigned int size);
+
+
+	/*
+	 * executes HTTP(S) PUT request
+	 * it stores response in internal dynamic memory in case no DownloadHandler is set
+	 * optionally call SetMaxResponseDataSize() in case the default memory allocation limit of 16kB is too small
+	 * optionally call Clear() to clear the buffer
+	 * @param PUT data (can be binary too)
+	 * @return
+	 * 		- HTTP response status code
+	 * 		- 0 on error
+	 */
+	unsigned short HttpPut(String& sData);
+
 	/*
 	 * in case the default max 16kB dynamic buffer limit is too small, you can increase the limit here.
 	 * @param maxBodyBufferSize
@@ -114,6 +140,8 @@ private:
 	std::list<String> mlRequestHeaders;
 	const char* mpPostData = NULL;
 	unsigned int muPostDataSize = 0;
+	const char* mpPutData = NULL;
+	unsigned int muPutDataSize = 0;
 
 	/*
 	 * Note: The site "https://www.howsmyssl.com/a/check" is useful to test and experiment with TLS layer and CA Certificates

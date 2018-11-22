@@ -89,9 +89,21 @@ unsigned short WebClient::HttpPost(String& sData) {
 	return HttpPost(sData.c_str(), sData.length());
 }
 
+unsigned short WebClient::HttpPut(const char* data, unsigned int size) {
+	if (!data) return 0;
+
+	mpPutData = data;
+	muPutDataSize = size;
+	return HttpExecute();
+}
+
+unsigned short WebClient::HttpPut(String& sData) {
+	return HttpPut(sData.c_str(), sData.length());
+}
+
 void WebClient::PrepareRequest(String& sRequest) {
 	sRequest.reserve(512);
-	sRequest = mpPostData ? "POST " : "GET ";
+	sRequest = mpPostData ? "POST " : mpPutData ? "PUT" : "GET ";
 	sRequest += mpUrl->GetPath();
 	if (mpUrl->GetQueryParams().size()) {
 		sRequest += '?';
@@ -112,6 +124,12 @@ void WebClient::PrepareRequest(String& sRequest) {
 		sprintf(contentLength, "Content-Length: %u\r\n", muPostDataSize);
 		sRequest += contentLength;
 	}
+	if (mpPutData) {
+		ESP_LOGD(LOGTAG, "SETTING Content-Length to %u", muPutDataSize);
+		char contentLength[64];
+		sprintf(contentLength, "Content-Length: %u\r\n", muPutDataSize);
+		sRequest += contentLength;
+	}
 
 	sRequest += "User-Agent: esp32webclient/1.0 esp32\r\n\r\n";
 }
@@ -119,6 +137,8 @@ void WebClient::PrepareRequest(String& sRequest) {
 unsigned short WebClient::HttpGet() {
 	mpPostData = NULL;
 	muPostDataSize = 0;
+	mpPutData = NULL;
+	muPutDataSize = 0;
 	unsigned short statuscode;
 	
 	if (!mpUrl) return 1001;
@@ -207,6 +227,13 @@ unsigned short WebClient::HttpExecute() {
 	if (mpPostData) {
 		if (write(s, mpPostData, muPostDataSize) < 0) {
 			ESP_LOGE(LOGTAG, "... socket send post data failed");
+			close(s);
+			return 1007;
+		}
+	}
+	if (mpPutData) {
+		if (write(s, mpPutData, muPutDataSize) < 0) {
+			ESP_LOGE(LOGTAG, "... socket send put data failed");
 			close(s);
 			return 1007;
 		}
@@ -368,6 +395,15 @@ unsigned short WebClient::HttpExecuteSecure() {
 		while ((ret = mbedtls_ssl_write(&ssl, (const unsigned char*)mpPostData, muPostDataSize)) <= 0) {
 			if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
 				ESP_LOGE(LOGTAG, "mbedtls_ssl_write returned -0x%x during POST", -ret);
+				goto exit;
+			}
+		}
+	}
+
+	if (mpPutData) {
+		while ((ret = mbedtls_ssl_write(&ssl, (const unsigned char*)mpPutData, muPutDataSize)) <= 0) {
+			if (ret != MBEDTLS_ERR_SSL_WANT_READ && ret != MBEDTLS_ERR_SSL_WANT_WRITE) {
+				ESP_LOGE(LOGTAG, "mbedtls_ssl_write returned -0x%x during PUT", -ret);
 				goto exit;
 			}
 		}

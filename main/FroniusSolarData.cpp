@@ -254,7 +254,7 @@ void FroniusSolarData::GetData() {
             Process(response);
             mpUfo->dt.leaveAction(solarProcess);
         } else {
-            ESP_LOGE(LOGTAG, "Communication with Fronius API failed - error %u", responseCode);
+            ESP_LOGE(LOGTAG, "Communication with Fronius API failed - error %u: %s", responseCode, response.c_str());
             DynatraceAction* solarFailure = mpUfo->dt.enterAction("Handle Fronius Solar API failure", dtPollApi);
             HandleFailure();
             mpUfo->dt.leaveAction(solarFailure);
@@ -287,16 +287,18 @@ void FroniusSolarData::CreateDynatraceDevice() {
     DynatraceAction* dtPollApi = mpUfo->dt.enterAction("Prepare Dynatrace Custom Device");
     if (solarClient.Prepare(&mDtUrlDevice)) {
         DynatraceAction* dtHttpPost = mpUfo->dt.enterAction("HTTP POST Request", WEBREQUEST, dtPollApi);
+        solarClient.AddHttpHeaderCStr("Content-Type: application/json");
+
         String data = String("{\"displayName\":\"Fronius Device\",\"type\":\"Fronius\"}");
         unsigned short responseCode = solarClient.HttpPost(data);
         String response = solarClient.GetResponseData();
         mpUfo->dt.leaveAction(dtHttpPost, &mDtUrlDeviceString, responseCode, response.length());
         if (responseCode == 200) {
             DynatraceAction* dtProcess = mpUfo->dt.enterAction("Process response from Dynatrace Custom Device creation", dtPollApi);
-            //Process(response);
+            ESP_LOGI(LOGTAG, "Had response when creating device: %s", response.c_str());
             mpUfo->dt.leaveAction(dtProcess);
         } else {
-            ESP_LOGE(LOGTAG, "Communication with Dynatrace failed - error %u", responseCode);
+            ESP_LOGE(LOGTAG, "Communication with Dynatrace failed - %s - error %u: %s\n%s", mDtUrlDevice.GetUrl().c_str(), responseCode, response.c_str(), data.c_str());
             DynatraceAction* dtFailure = mpUfo->dt.enterAction("Handle Dynatrace API failure", dtPollApi);
             HandleFailure();
             mpUfo->dt.leaveAction(dtFailure);
@@ -312,19 +314,21 @@ void FroniusSolarData::CreateDynatraceMetric(const char* cpName) {
 	ESP_LOGD(LOGTAG, "Creating Dynatrace Custom Metric");
     DynatraceAction* dtPollApi = mpUfo->dt.enterAction("Prepare Dynatrace Custom Metric");
     if (solarClient.Prepare(&mDtUrlMetric)) {
-        DynatraceAction* dtHttpPost = mpUfo->dt.enterAction("HTTP POST Request", WEBREQUEST, dtPollApi);
+        DynatraceAction* dtHttpPost = mpUfo->dt.enterAction("HTTP PUT Request", WEBREQUEST, dtPollApi);
+        solarClient.AddHttpHeaderCStr("Content-Type: application/json");
+
         String data = String("{\"displayName\":\"Fronius Solar-");
         data += cpName;
         data += "\",\"unit\":\"Count\",\"dimensions\":[\"value\"],\"types\":[\"Fronius\"]}";
-        unsigned short responseCode = solarClient.HttpPost(data);
+        unsigned short responseCode = solarClient.HttpPut(data);
         String response = solarClient.GetResponseData();
         mpUfo->dt.leaveAction(dtHttpPost, &mDtUrlMetricString, responseCode, response.length());
         if (responseCode == 200) {
             DynatraceAction* dtProcess = mpUfo->dt.enterAction("Process response from Dynatrace Custom Metric creation", dtPollApi);
-            //Process(response);
+            ESP_LOGI(LOGTAG, "Had response when creating metric: %s", response.c_str());
             mpUfo->dt.leaveAction(dtProcess);
         } else {
-            ESP_LOGE(LOGTAG, "Communication with Dynatrace failed - error %u", responseCode);
+            ESP_LOGE(LOGTAG, "Communication with Dynatrace failed - %s - error %u: %s\n%s", mDtUrlMetric.GetUrl().c_str(), responseCode, response.c_str(), data.c_str());
             DynatraceAction* dtFailure = mpUfo->dt.enterAction("Handle Dynatrace API failure", dtPollApi);
             HandleFailure();
             mpUfo->dt.leaveAction(dtFailure);
@@ -341,8 +345,9 @@ void FroniusSolarData::SendDataToDynatrace(String &series) {
     DynatraceAction* dtPollApi = mpUfo->dt.enterAction("Send to Dynatrace API");
     if (solarClient.Prepare(&mDtUrlDevice)) {
         DynatraceAction* dtHttpPost = mpUfo->dt.enterAction("HTTP POST Request", WEBREQUEST, dtPollApi);
+        solarClient.AddHttpHeaderCStr("Content-Type: application/json");
 
-        String data = String("{ \"series\" : [");
+        String data = String("{ \"type\":\"Fronius\", \"series\" : [");
         data += series;
         data += "] }";
         unsigned short responseCode = solarClient.HttpPost(data);
@@ -350,10 +355,10 @@ void FroniusSolarData::SendDataToDynatrace(String &series) {
         mpUfo->dt.leaveAction(dtHttpPost, &mDtUrlDeviceString, responseCode, response.length());
         if (responseCode == 200) {
             DynatraceAction* dtProcess = mpUfo->dt.enterAction("Process response from Dynatrace Metrics data", dtPollApi);
-            //Process(response);
+            ESP_LOGI(LOGTAG, "Had response when sending data: %s", response.c_str());
             mpUfo->dt.leaveAction(dtProcess);
         } else {
-            ESP_LOGE(LOGTAG, "Communication with Dynatrace failed - error %u", responseCode);
+            ESP_LOGE(LOGTAG, "Communication with Dynatrace failed - %s - error %u: %s\n%s", mDtUrlDevice.GetUrl().c_str(), responseCode, response.c_str(), data.c_str());
             DynatraceAction* dtFailure = mpUfo->dt.enterAction("Handle Dynatrace API failure", dtPollApi);
             HandleFailure();
             mpUfo->dt.leaveAction(dtFailure);
