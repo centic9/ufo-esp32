@@ -35,6 +35,7 @@ void task_function_fronius_solar_data(void *pvParameter)
 
 static void obtain_time(void);
 static void initialize_sntp(void);
+static void stop_sntp(void);
 static long long timestamp(void);
 
 FroniusSolarData::FroniusSolarData() {
@@ -191,12 +192,13 @@ void FroniusSolarData::Run(__uint8_t uTaskId) {
 	ESP_LOGD(LOGTAG, "Run");
     while (1) {
         if (mpUfo->GetWifi().IsConnected()) {
-            // we need to ensure that we have correct system time
-            obtain_time();
-
             //Configuration is not atomic - so in case of a change there is the possibility that we use inconsistent credentials - but who cares (the next time it would be fine again)
             if (uConfigRevision != mActConfigRevision){
                 uConfigRevision = mActConfigRevision; //memory barrier would be needed here
+
+                // we need to ensure that we have correct system time
+                obtain_time();
+
                 FroniusParseIntegrationUrl(mSolarUrl, mpConfig->msSolarUrl);
 
                 ESP_LOGI(LOGTAG, "DTURL: %s", mpConfig->msSolarDTEnvIdOrUrl.c_str());
@@ -463,6 +465,7 @@ static void obtain_time(void)
     }
 
     ESP_LOGI(TAG, "Had time year %d, epoch: %lld", timeinfo.tm_year, timestamp());
+    stop_sntp();
 }
 
 static void initialize_sntp(void)
@@ -471,6 +474,11 @@ static void initialize_sntp(void)
     sntp_setoperatingmode(SNTP_OPMODE_POLL);
     sntp_setservername(0, (char*)"pool.ntp.org");
     sntp_init();
+}
+
+static void stop_sntp(void)
+{
+    sntp_stop();
 }
 
 static long long timestamp(void) {
