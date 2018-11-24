@@ -82,6 +82,8 @@ unsigned short WebClient::HttpPost(const char* data, unsigned int size) {
 
 	mpPostData = data;
 	muPostDataSize = size;
+	mpPutData = NULL;
+	muPutDataSize = 0;
 	return HttpExecute();
 }
 
@@ -92,6 +94,8 @@ unsigned short WebClient::HttpPost(String& sData) {
 unsigned short WebClient::HttpPut(const char* data, unsigned int size) {
 	if (!data) return 0;
 
+	mpPostData = NULL;
+	muPostDataSize = 0;
 	mpPutData = data;
 	muPutDataSize = size;
 	return HttpExecute();
@@ -103,7 +107,7 @@ unsigned short WebClient::HttpPut(String& sData) {
 
 void WebClient::PrepareRequest(String& sRequest) {
 	sRequest.reserve(512);
-	sRequest = mpPostData ? "POST " : mpPutData ? "PUT" : "GET ";
+	sRequest = mpPostData ? "POST " : mpPutData ? "PUT " : "GET ";
 	sRequest += mpUrl->GetPath();
 	if (mpUrl->GetQueryParams().size()) {
 		sRequest += '?';
@@ -119,13 +123,13 @@ void WebClient::PrepareRequest(String& sRequest) {
 	}
 
 	if (mpPostData) {
-		ESP_LOGD(LOGTAG, "SETTING Content-Length to %u", muPostDataSize);
+		ESP_LOGD(LOGTAG, "SETTING POST Content-Length to %u", muPostDataSize);
 		char contentLength[64];
 		sprintf(contentLength, "Content-Length: %u\r\n", muPostDataSize);
 		sRequest += contentLength;
 	}
 	if (mpPutData) {
-		ESP_LOGD(LOGTAG, "SETTING Content-Length to %u", muPutDataSize);
+		ESP_LOGD(LOGTAG, "SETTING PUT Content-Length to %u", muPutDataSize);
 		char contentLength[64];
 		sprintf(contentLength, "Content-Length: %u\r\n", muPutDataSize);
 		sRequest += contentLength;
