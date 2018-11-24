@@ -9,9 +9,12 @@
 #include "esp_system.h"
 #include <esp_log.h>
 #include <cJSON.h>
-#include <sys/time.h>
+
+#include "apps/sntp/sntp.h"
+// newer versions use: #include "lwip/apps/sntp.h"
 
 static const char* LOGTAG = "FroniusSolar";
+static const char* TAG = "FroniusSolar";
 
 typedef struct{
     FroniusSolarData* pIntegration;
@@ -30,6 +33,9 @@ void task_function_fronius_solar_data(void *pvParameter)
 	vTaskDelete(NULL);
 }
 
+static void obtain_time(void);
+static void initialize_sntp(void);
+static long long timestamp(void);
 
 FroniusSolarData::FroniusSolarData() {
     miSOC = -1;
@@ -185,6 +191,9 @@ void FroniusSolarData::Run(__uint8_t uTaskId) {
 	ESP_LOGD(LOGTAG, "Run");
     while (1) {
         if (mpUfo->GetWifi().IsConnected()) {
+            // we need to ensure that we have correct system time
+            obtain_time();
+
             //Configuration is not atomic - so in case of a change there is the possibility that we use inconsistent credentials - but who cares (the next time it would be fine again)
             if (uConfigRevision != mActConfigRevision){
                 uConfigRevision = mActConfigRevision; //memory barrier would be needed here
@@ -215,7 +224,7 @@ void FroniusSolarData::Run(__uint8_t uTaskId) {
                     CreateDynatraceMetric("P_Load");
                     ParseDynatraceMetricUrl(mDtUrlMetric, mpConfig->msSolarDTEnvIdOrUrl, "custom:dost.solar.p_pv", mpConfig->msSolarDTApiToken);
                     CreateDynatraceMetric("P_PV");
-                    ParseDynatraceMetricUrl(mDtUrlMetric, mpConfig->msSolarDTEnvIdOrUrl, "custom:dost.solar.rel_autononmy", mpConfig->msSolarDTApiToken);
+                    ParseDynatraceMetricUrl(mDtUrlMetric, mpConfig->msSolarDTEnvIdOrUrl, "custom:dost.solar.rel_autonomy", mpConfig->msSolarDTApiToken);
                     CreateDynatraceMetric("rel_Autonomy");
                     ParseDynatraceMetricUrl(mDtUrlMetric, mpConfig->msSolarDTEnvIdOrUrl, "custom:dost.solar.rel_selfconsumption", mpConfig->msSolarDTApiToken);
                     CreateDynatraceMetric("rel_SelfConsumption");
@@ -249,7 +258,7 @@ void FroniusSolarData::GetData() {
         unsigned short responseCode = solarClient.HttpGet();
         String response = solarClient.GetResponseData();
         mpUfo->dt.leaveAction(solarHttpGet, &mSolarUrlString, responseCode, response.length());
-        if (responseCode == 200) {
+        if (responseCode < 300) {
             DynatraceAction* solarProcess = mpUfo->dt.enterAction("Process Fronius Solar Metrics", dtPollApi);
             Process(response);
             mpUfo->dt.leaveAction(solarProcess);
@@ -293,7 +302,7 @@ void FroniusSolarData::CreateDynatraceDevice() {
         unsigned short responseCode = solarClient.HttpPost(data);
         String response = solarClient.GetResponseData();
         mpUfo->dt.leaveAction(dtHttpPost, &mDtUrlDeviceString, responseCode, response.length());
-        if (responseCode == 200) {
+        if (responseCode < 300) {
             DynatraceAction* dtProcess = mpUfo->dt.enterAction("Process response from Dynatrace Custom Device creation", dtPollApi);
             ESP_LOGI(LOGTAG, "Had response when creating device: %s", response.c_str());
             mpUfo->dt.leaveAction(dtProcess);
@@ -323,7 +332,7 @@ void FroniusSolarData::CreateDynatraceMetric(const char* cpName) {
         unsigned short responseCode = solarClient.HttpPut(data);
         String response = solarClient.GetResponseData();
         mpUfo->dt.leaveAction(dtHttpPost, &mDtUrlMetricString, responseCode, response.length());
-        if (responseCode == 200) {
+        if (responseCode < 300) {
             DynatraceAction* dtProcess = mpUfo->dt.enterAction("Process response from Dynatrace Custom Metric creation", dtPollApi);
             ESP_LOGI(LOGTAG, "Had response when creating metric: %s", response.c_str());
             mpUfo->dt.leaveAction(dtProcess);
@@ -353,7 +362,7 @@ void FroniusSolarData::SendDataToDynatrace(String &series) {
         unsigned short responseCode = solarClient.HttpPost(data);
         String response = solarClient.GetResponseData();
         mpUfo->dt.leaveAction(dtHttpPost, &mDtUrlDeviceString, responseCode, response.length());
-        if (responseCode == 200) {
+        if (responseCode < 300) {
             DynatraceAction* dtProcess = mpUfo->dt.enterAction("Process response from Dynatrace Metrics data", dtPollApi);
             ESP_LOGI(LOGTAG, "Had response when sending data: %s", response.c_str());
             mpUfo->dt.leaveAction(dtProcess);
@@ -435,10 +444,42 @@ string Battery_Mode ;
     }
 }
 
-long timestamp() {
-    struct timeval tp;
-    gettimeofday(&tp, NULL);
-    return tp.tv_sec * 1000 + tp.tv_usec / 1000;
+static void obtain_time(void)
+{
+    // See https://github.com/espressif/esp-idf/blob/master/examples/protocols/sntp/main/sntp_example_main.c
+    ESP_LOGI(TAG, "Getting time over NTP.");
+    initialize_sntp();
+
+    // wait for time to be set
+    time_t now = 0;
+    struct tm timeinfo = { 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+    int retry = 0;
+    const int retry_count = 20;
+    while(timeinfo.tm_year < (2016 - 1900) && ++retry < retry_count) {
+        ESP_LOGI(TAG, "Waiting for system time to be set... (%d/%d)", retry, retry_count);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);
+        time(&now);
+        localtime_r(&now, &timeinfo);
+    }
+
+    ESP_LOGI(TAG, "Had time year %d, epoch: %lld", timeinfo.tm_year, timestamp());
+}
+
+static void initialize_sntp(void)
+{
+    ESP_LOGI(TAG, "Initializing SNTP");
+    sntp_setoperatingmode(SNTP_OPMODE_POLL);
+    sntp_setservername(0, (char*)"pool.ntp.org");
+    sntp_init();
+}
+
+static long long timestamp(void) {
+    // This returns seconds since startup of the device!
+    struct timeval te;
+    gettimeofday(&te, NULL); // get current time
+    long long milliseconds = te.tv_sec*1000LL + te.tv_usec/1000; // calculate milliseconds
+    //ESP_LOGW(LOGTAG, "Current milliseconds: %lld, %ld, %ld", milliseconds, te.tv_sec, te.tv_usec);
+    return milliseconds;
 }
 
 void addSeries(String &series, const char* cpMetric, cJSON *jsonMetric) {
@@ -450,8 +491,8 @@ void addSeries(String &series, const char* cpMetric, cJSON *jsonMetric) {
         series += ",";
     }
 
-    series.printf("{ \"timeseriesId\" : \"%s\", \"dimensions\" : { \"value\" : \"value\" }, \"dataPoints\" : [ [ %d, %f ] ] }",
-        cpMetric, timestamp, jsonMetric->valuedouble);
+    series.printf("{ \"timeseriesId\" : \"%s\", \"dimensions\" : { \"value\" : \"value\" }, \"dataPoints\" : [ [ %lld, %f ] ] }",
+        cpMetric, timestamp(), jsonMetric->valuedouble);
 }
 
 void FroniusSolarData::Process(String& jsonString) {
