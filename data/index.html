@@ -267,7 +267,7 @@
 							<textarea name="wifientca" id="enterpriseca" style='Height:100px'></textarea>
 						</div>
 						Hostname:<br>
-						<input type="text" name="hostname" placeholder="default=ufo" id="wifihostname" />
+						<input type="text" name="wifihostname" placeholder="default=ufo" id="wifihostname" />
 					</div>
 					<div class="padded-full">
 						<span class="padded-list"><font color="red" id="configwifierror"></font></span>
@@ -301,7 +301,12 @@
 							Listen Port (optional):<br>
 							<input type="number" name="listenport" id="listenport" />
 							Custom Certificate + Private Key (optional)
-							<textarea name="servercert" id="servercert" style='Height:100px'></textarea>
+							<textarea name="servercert" id="servercert" style='Height:100px'>-----BEGIN CERTIFICATE-----
+abc1234....
+-----END CERTIFICATE-----
+-----BEGIN PRIVATE KEY-----
+abc1234....
+-----END PRIVATE KEY-----</textarea>
 						</ul>
 					</div>
 					<div class="padded-full">

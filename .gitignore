@@ -55,6 +55,8 @@ go/src/source*
 .vscode/*
 .vscode/settings.json
 .vscode/c_cpp_properties.json
+.vscode/c_cpp_properties.json
+.vscode/c_cpp_properties.json
 
 # IntelliJ project files
 .idea/
